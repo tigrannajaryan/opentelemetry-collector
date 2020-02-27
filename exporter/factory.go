@@ -48,17 +48,17 @@ type Factory interface {
 	CreateMetricsExporter(logger *zap.Logger, cfg configmodels.Exporter) (MetricsExporter, error)
 }
 
-// OTLPFactory can create OTLPTraceExporter and OTLPMetricsExporter. This is the
-// new factory type that can create OTLP-based exporters.
-type OTLPFactory interface {
+// IFactory can create ITraceExporter and IMetricsExporter. This is the
+// new factory type that can create new style exporters.
+type IFactory interface {
 	BaseFactory
 
-	// CreateOTLPTraceReceiver creates a trace receiver based on this config.
+	// CreateITraceReceiver creates a trace receiver based on this config.
 	// If the receiver type does not support tracing or if the config is not valid
 	// error will be returned instead.
-	CreateOTLPTraceExporter(logger *zap.Logger, cfg configmodels.Exporter) (OTLPTraceExporter, error)
+	CreateITraceExporter(logger *zap.Logger, cfg configmodels.Exporter) (ITraceExporter, error)
 
-	// TODO: Add CreateOTLPMetricsExporter.
+	// TODO: Add CreateIMetricsExporter.
 }
 
 // Build takes a list of exporter factories and returns a map of type map[string]Factory

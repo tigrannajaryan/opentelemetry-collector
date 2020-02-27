@@ -19,6 +19,7 @@ import (
 	"context"
 
 	"github.com/open-telemetry/opentelemetry-collector/consumer/consumerdata"
+	"github.com/open-telemetry/opentelemetry-collector/internal/data"
 )
 
 // MetricsConsumer is an interface that receives consumerdata.MetricsData, process it as needed, and
@@ -37,9 +38,9 @@ type TraceConsumer interface {
 	ConsumeTraceData(ctx context.Context, td consumerdata.TraceData) error
 }
 
-// OTLPTraceConsumer is an interface that receives consumerdata.OTLPTraceData, processes it
+// ITraceConsumer is an interface that receives data.ITraceData, processes it
 // as needed, and sends it to the next processing node if any or to the destination.
-type OTLPTraceConsumer interface {
-	// ConsumeOTLPTrace receives consumerdata.OTLPTraceData for processing.
-	ConsumeOTLPTrace(ctx context.Context, td consumerdata.OTLPTraceData) error
+type ITraceConsumer interface {
+	// ConsumeITrace receives data.ITraceData for processing.
+	ConsumeITrace(ctx context.Context, td data.ITraceData) error
 }
