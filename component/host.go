@@ -63,4 +63,6 @@ type Host interface {
 	// GetExporters can be called by the component anytime after Component.Start() begins and
 	// until Component.Shutdown() ends.
 	GetExporters() map[config.DataType]map[config.ComponentID]Exporter
+
+	GetConfig() *config.Config
 }

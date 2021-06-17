@@ -124,6 +124,10 @@ func (srv *service) GetExporters() map[config.DataType]map[config.ComponentID]co
 	return srv.builtExporters.ToMapByDataType()
 }
 
+func (srv *service) GetConfig() *config.Config {
+	return srv.config
+}
+
 func (srv *service) buildExtensions() error {
 	var err error
 	srv.builtExtensions, err = builder.BuildExtensions(srv.logger, srv.buildInfo, srv.config, srv.factories.Extensions)

@@ -37,7 +37,7 @@ func main() {
 		Version:     version.Version,
 	}
 
-	if err := run(service.CollectorSettings{BuildInfo: info, Factories: factories}); err != nil {
+	if err := runInteractive(service.CollectorSettings{BuildInfo: info, Factories: factories}); err != nil {
 		log.Fatal(err)
 	}
 }

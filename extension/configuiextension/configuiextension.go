@@ -17,12 +17,12 @@ package configuiextension
 import (
 	"context"
 	"fmt"
-	"html"
 	"net/http"
 
 	"go.uber.org/zap"
 
 	"go.opentelemetry.io/collector/component"
+	config2 "go.opentelemetry.io/collector/config"
 )
 
 type configUIExtension struct {
@@ -30,18 +30,39 @@ type configUIExtension struct {
 	logger *zap.Logger
 	server http.Server
 	stopCh chan struct{}
+	colCfg *config2.Config
 }
 
 func (cfe *configUIExtension) Start(_ context.Context, host component.Host) error {
-	http.Handle("/foo", fooHandler)
+	//http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	//	fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
+	//})
 
-	http.HandleFunc("/bar", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
-	})
+	//go func() {
+	//	if err := http.ListenAndServe(cfe.config.TCPAddr, nil); err != nil {
+	//
+	//	}
+	//}()
 
+	cfe.colCfg = host.GetConfig()
+
+	ln, err := cfe.config.TCPAddr.Listen()
+	if err != nil {
+		return err
+	}
+
+	cfe.logger.Info("Starting config UI extension", zap.Any("config", cfe.config))
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", cfe.Handler)
+
+	cfe.server = http.Server{Handler: mux}
+
+	cfe.stopCh = make(chan struct{})
 	go func() {
-		if err := http.ListenAndServe(cfe.config.TCPAddr, nil); err != nil {
+		defer close(cfe.stopCh)
 
+		if err := cfe.server.Serve(ln); err != nil && err != http.ErrServerClosed {
+			host.ReportFatalError(err)
 		}
 	}()
 
@@ -60,5 +81,16 @@ func newServer(config Config, logger *zap.Logger) *configUIExtension {
 	return &configUIExtension{
 		config: config,
 		logger: logger,
+	}
+}
+
+// Handler creates a new HTTP handler.
+func (hc *configUIExtension) Handler(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte("hello world"))
+
+	for n, _ := range hc.colCfg.Pipelines {
+		w.Write([]byte(fmt.Sprintf("Pipeline %s", n)))
+
 	}
 }
