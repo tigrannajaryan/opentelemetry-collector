@@ -55,7 +55,12 @@ func (cfe *configUIExtension) Start(_ context.Context, host component.Host) erro
 
 	cfe.logger.Info("Starting config UI extension", zap.Any("config", cfe.config))
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", cfe.Handler)
+	mux.HandleFunc("/", cfe.renderRoot)
+	mux.HandleFunc("/pipelines", cfe.renderPipelines)
+	mux.HandleFunc("/extensions", cfe.renderExtensions)
+	mux.HandleFunc("/receivers", cfe.renderReceivers)
+	mux.HandleFunc("/processors", cfe.renderProcessors)
+	mux.HandleFunc("/exporters", cfe.renderExporters)
 
 	cfe.server = http.Server{Handler: mux}
 
@@ -86,50 +91,105 @@ func newServer(config Config, logger *zap.Logger) *configUIExtension {
 	}
 }
 
-// Handler creates a new HTTP handler.
-func (hc *configUIExtension) Handler(w http.ResponseWriter, _ *http.Request) {
+func (hc *configUIExtension) renderRoot(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte("hello world"))
+	w.Write([]byte(`
+<a href="extensions">Extensions</a><br/>
+<a href="receivers">Receivers</a><br/>
+<a href="pipelines">Pipelines</a><br/>
+<a href="processors">Processors</a><br/>
+<a href="exporters">Exporters</a><br/>
+`))
+}
 
-	for n, _ := range hc.colCfg.Pipelines {
-		w.Write([]byte(fmt.Sprintf("Pipeline %s", n)))
-
-	}
-
-	for n, r := range hc.colCfg.Receivers {
-		hc.renderReceiver(w, n, r)
+func (hc *configUIExtension) renderPipelines(w http.ResponseWriter, _ *http.Request) {
+	for n, p := range hc.colCfg.Pipelines {
+		hc.renderComponentConfig(w, n, p)
 	}
 }
 
-func (hc *configUIExtension) renderReceiver(w http.ResponseWriter, name config2.ComponentID, cfg config2.Receiver) {
-	//w.Write([]byte(fmt.Sprintf("Receiver %s<br>", name.String())))
+func (hc *configUIExtension) renderExtensions(w http.ResponseWriter, _ *http.Request) {
+	for n, r := range hc.colCfg.Extensions {
+		hc.renderComponentConfig(w, n.String(), r)
+	}
+}
 
-	//r := reflect.TypeOf(cfg)
-	//if r.Kind() != reflect.Struct {
-	//	return
-	//}
+func (hc *configUIExtension) renderReceivers(w http.ResponseWriter, _ *http.Request) {
+	for n, r := range hc.colCfg.Receivers {
+		hc.renderComponentConfig(w, n.String(), r)
+	}
+}
 
-	html := renderStruct(name.String(), reflect.ValueOf(cfg), 1)
+func (hc *configUIExtension) renderProcessors(w http.ResponseWriter, _ *http.Request) {
+	for n, r := range hc.colCfg.Processors {
+		hc.renderComponentConfig(w, n.String(), r)
+	}
+}
+
+func (hc *configUIExtension) renderExporters(w http.ResponseWriter, _ *http.Request) {
+	for n, r := range hc.colCfg.Exporters {
+		hc.renderComponentConfig(w, n.String(), r)
+	}
+}
+
+func (hc *configUIExtension) renderComponentConfig(w http.ResponseWriter, name string, cfg interface{}) {
+	w.Header().Set("Content-Type", "text/html")
+
+	html := renderStruct(name, reflect.ValueOf(cfg))
 	w.Write([]byte(html))
 }
 
-func renderStruct(structName string, v reflect.Value, level int) string {
+func renderStruct(structName string, v reflect.Value) string {
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
 
-	shtml := fmt.Sprintf("<h%d>%s</h%d>", level, structName, level)
+	shtml := fmt.Sprintf("<h1>%s</h1>", structName)
 
 	shtml = shtml + `<table border=1 style="border-collapse: collapse">`
 
-	shtml = shtml + renderStructFields(v, level)
+	shtml = shtml + renderStructFields(v)
 
 	shtml = shtml + "</table>"
 
 	return shtml
 }
 
-func renderStructFields(v reflect.Value, level int) string {
+func renderField(fieldName string, field reflect.Value, squash bool) string {
+	if field.Kind() == reflect.Ptr && !field.IsNil() {
+		field = field.Elem()
+	}
+
+	var html string
+	kind := field.Kind()
+	switch kind {
+	case reflect.Bool:
+		html = renderBool(fieldName, field)
+	case reflect.Int:
+		html = renderInt(fieldName, field)
+	case reflect.String:
+		html = renderString(fieldName, field)
+	case reflect.Struct:
+		if cid, ok := field.Interface().(config2.ComponentID); ok {
+			html = renderString(fieldName, reflect.ValueOf(cid.String()))
+			cid = cid
+		} else {
+			if squash {
+				html = renderStructFields(field)
+			} else {
+				html = renderStruct(fieldName, field)
+			}
+		}
+	case reflect.Slice:
+		html = renderSlice(fieldName, field)
+	default:
+		html = fmt.Sprintf("%s %s = %v<br>", fieldName, field.Type(), field.Interface())
+	}
+
+	return html
+}
+
+func renderStructFields(v reflect.Value) string {
 
 	shtml := ""
 
@@ -145,34 +205,16 @@ func renderStructFields(v reflect.Value, level int) string {
 		field := v.Field(i)
 		fieldName := fieldType.Name
 
-		if field.Kind() == reflect.Ptr && !field.IsNil() {
-			field = field.Elem()
+		squash := isSquashed(fieldType)
+		html := renderField(fieldName, field, squash)
+
+		if squash {
+			shtml = shtml + html
+		} else {
+			row := fmt.Sprintf(`<tr><td><label for="%s">%s</label>:</td><td>%s</td></tr>`,
+				fieldName, fieldName, html)
+			shtml = shtml + row
 		}
-
-		var html string
-		kind := field.Kind()
-		switch kind {
-		case reflect.Bool:
-			html = renderBool(fieldName, field)
-		case reflect.Int:
-			html = renderInt(fieldName, field)
-		case reflect.String:
-			html = renderString(fieldName, field)
-		case reflect.Struct:
-			if isSquashed(fieldType) {
-				shtml = shtml + renderStructFields(field, level)
-				continue
-			} else {
-				html = renderStruct(fieldName, field, level+1)
-			}
-		default:
-			html = fmt.Sprintf("%d: %s %s = %v<br>", i, fieldName, field.Type(), field.Interface())
-		}
-
-		row := fmt.Sprintf(`<tr><td><label for="%s">%s</label>:</td><td>%s</td></tr>`,
-			fieldName, fieldName, html)
-
-		shtml = shtml + row
 	}
 
 	return shtml
@@ -245,8 +287,23 @@ func renderInt(fieldName string, v reflect.Value) string {
 }
 
 func renderString(fieldName string, v reflect.Value) string {
-	val := v.Interface().(string)
+	val, ok := v.Interface().(string)
+	if !ok {
+		valStringer, ok := v.Interface().(fmt.Stringer)
+		if ok {
+			val = valStringer.String()
+		}
+	}
 	return fmt.Sprintf(
 		`<input type="text" id="%s" name="%s" value="%s">`,
 		fieldName, fieldName, val)
+}
+
+func renderSlice(fieldName string, v reflect.Value) string {
+	html := "<table>"
+	for i := 0; i < v.Len(); i++ {
+		//elem := v.Index(i)
+		//html = html + "<tr><td>" + renderField(fieldName, elem, false) + "</td></tr>"
+	}
+	return html + "</table>"
 }
