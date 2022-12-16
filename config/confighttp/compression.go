@@ -177,6 +177,12 @@ func newBodyReader(r *http.Request) (io.ReadCloser, error) {
 			return nil, err
 		}
 		return zr, nil
+	case "zstd":
+		zr, err := zstd.NewReader(r.Body, zstd.WithDecoderConcurrency(1))
+		if err != nil {
+			return nil, err
+		}
+		return zr.IOReadCloser(), nil
 	}
 	return nil, nil
 }

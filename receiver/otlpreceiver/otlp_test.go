@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
@@ -55,6 +56,14 @@ import (
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 	semconv "go.opentelemetry.io/collector/semconv/v1.5.0"
+)
+
+type encodingType string
+
+const (
+	encodingNone encodingType = ""
+	encodingGzip encodingType = "gzip"
+	encodingZstd encodingType = "zstd"
 )
 
 const otlpReceiverName = "receiver_test"
@@ -140,25 +149,29 @@ var traceOtlp = func() ptrace.Traces {
 func TestJsonHttp(t *testing.T) {
 	tests := []struct {
 		name     string
-		encoding string
+		encoding encodingType
 		err      error
 	}{
 		{
 			name:     "JSONUncompressed",
-			encoding: "",
+			encoding: encodingNone,
 		},
 		{
 			name:     "JSONGzipCompressed",
-			encoding: "gzip",
+			encoding: encodingGzip,
+		},
+		{
+			name:     "JSONZstdCompressed",
+			encoding: encodingZstd,
 		},
 		{
 			name:     "NotGRPCError",
-			encoding: "",
+			encoding: encodingNone,
 			err:      errors.New("my error"),
 		},
 		{
 			name:     "GRPCError",
-			encoding: "",
+			encoding: encodingNone,
 			err:      status.New(codes.Internal, "").Err(),
 		},
 	}
@@ -336,21 +349,26 @@ func TestHandleInvalidRequests(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func testHTTPJSONRequest(t *testing.T, url string, sink *errOrSinkConsumer, encoding string, expectedErr error) {
+func testHTTPJSONRequest(t *testing.T, url string, sink *errOrSinkConsumer, encoding encodingType, expectedErr error) {
 	var buf *bytes.Buffer
 	var err error
 	switch encoding {
-	case "gzip":
+	case encodingGzip:
 		buf, err = compressGzip(traceJSON)
 		require.NoError(t, err, "Error while gzip compressing trace: %v", err)
-	default:
+	case encodingZstd:
+		buf, err = compressZstd(traceJSON)
+		require.NoError(t, err, "Error while zstd compressing trace: %v", err)
+	case encodingNone:
 		buf = bytes.NewBuffer(traceJSON)
+	default:
+		t.Fatal("invalid encoding type")
 	}
 	sink.SetConsumeError(expectedErr)
 	req, err := http.NewRequest(http.MethodPost, url, buf)
 	require.NoError(t, err, "Error creating trace POST request: %v", err)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Content-Encoding", encoding)
+	req.Header.Set("Content-Encoding", string(encoding))
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -385,16 +403,20 @@ func testHTTPJSONRequest(t *testing.T, url string, sink *errOrSinkConsumer, enco
 func TestProtoHttp(t *testing.T) {
 	tests := []struct {
 		name     string
-		encoding string
+		encoding encodingType
 		err      error
 	}{
 		{
 			name:     "ProtoUncompressed",
-			encoding: "",
+			encoding: encodingNone,
 		},
 		{
 			name:     "ProtoGzipCompressed",
-			encoding: "gzip",
+			encoding: encodingGzip,
+		},
+		{
+			name:     "ProtoZstdCompressed",
+			encoding: encodingZstd,
 		},
 		{
 			name:     "NotGRPCError",
@@ -435,24 +457,29 @@ func TestProtoHttp(t *testing.T) {
 }
 
 func createHTTPProtobufRequest(
-	t *testing.T,
+	t testing.TB,
 	url string,
-	encoding string,
+	encoding encodingType,
 	traceBytes []byte,
 ) *http.Request {
 	var buf *bytes.Buffer
 	var err error
 	switch encoding {
-	case "gzip":
+	case encodingGzip:
 		buf, err = compressGzip(traceBytes)
 		require.NoError(t, err, "Error while gzip compressing trace: %v", err)
-	default:
+	case encodingZstd:
+		buf, err = compressZstd(traceBytes)
+		require.NoError(t, err, "Error while zstd compressing trace: %v", err)
+	case encodingNone:
 		buf = bytes.NewBuffer(traceBytes)
+	default:
+		t.Fatal("invalid encoding type")
 	}
 	req, err := http.NewRequest(http.MethodPost, url, buf)
 	require.NoError(t, err, "Error creating trace POST request: %v", err)
 	req.Header.Set("Content-Type", "application/x-protobuf")
-	req.Header.Set("Content-Encoding", encoding)
+	req.Header.Set("Content-Encoding", string(encoding))
 	return req
 }
 
@@ -460,7 +487,7 @@ func testHTTPProtobufRequest(
 	t *testing.T,
 	url string,
 	tSink *errOrSinkConsumer,
-	encoding string,
+	encoding encodingType,
 	traceBytes []byte,
 	expectedErr error,
 	wantData ptrace.Traces,
@@ -500,6 +527,87 @@ func testHTTPProtobufRequest(
 			assert.True(t, proto.Equal(errStatus, &spb.Status{Code: int32(codes.Unknown), Message: "my error"}))
 		}
 		require.Len(t, allTraces, 0)
+	}
+}
+
+func BenchmarkProtoHttp(b *testing.B) {
+	tests := []struct {
+		name     string
+		encoding encodingType
+	}{
+		{
+			name:     "ProtoUncompressed",
+			encoding: encodingNone,
+		},
+		{
+			name:     "ProtoGzipCompressed",
+			encoding: encodingGzip,
+		},
+		{
+			name:     "ProtoZstdCompressed",
+			encoding: encodingZstd,
+		},
+	}
+	addr := testutil.GetAvailableLocalAddress(b)
+
+	// Set the buffer count to 1 to make it flush the test span immediately.
+	tSink := &errOrSinkConsumer{TracesSink: new(consumertest.TracesSink)}
+	ocr := newHTTPReceiver(b, addr, tSink, consumertest.NewNop())
+
+	ocr.Start(context.Background(), componenttest.NewNopHost())
+	defer ocr.Shutdown(context.Background())
+
+	// Wait for the servers to start
+	<-time.After(100 * time.Millisecond)
+
+	td := testdata.GenerateTraces(1000)
+	marshaler := &ptrace.ProtoMarshaler{}
+	traceBytes, err := marshaler.MarshalTraces(td)
+	require.NoError(b, err)
+
+	for _, test := range tests {
+		b.Run(test.name, func(t *testing.B) {
+			url := fmt.Sprintf("http://%s/v1/traces", addr)
+			tSink.Reset()
+			benchmarkHTTPProtobufRequest(t, url, tSink, test.encoding, traceBytes, td)
+		})
+	}
+}
+
+func benchmarkHTTPProtobufRequest(
+	b *testing.B,
+	url string,
+	tSink *errOrSinkConsumer,
+	encoding encodingType,
+	traceBytes []byte,
+	wantData ptrace.Traces,
+) {
+	req := createHTTPProtobufRequest(b, url, encoding, traceBytes)
+
+	client := &http.Client{}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+
+		resp, err := client.Do(req)
+		require.NoError(b, err, "Error posting trace to grpc-gateway server: %v", err)
+
+		bts, err := io.ReadAll(resp.Body)
+		require.NotNil(b, bts)
+		require.NoError(b, err, "Error reading response from trace grpc-gateway")
+		require.NoError(b, resp.Body.Close(), "Error closing response body")
+
+		assert.Equal(b, "application/x-protobuf", resp.Header.Get("Content-Type"), "Unexpected response Content-Type")
+
+		//allTraces := tSink.AllTraces()
+
+		require.Equal(b, 200, resp.StatusCode, "Unexpected return status")
+
+		//tr := ptraceotlp.NewExportResponse()
+		//assert.NoError(b, tr.UnmarshalProto(respBytes), "Unable to unmarshal response to Response")
+
+		//require.Len(b, allTraces, 1)
+		//assert.EqualValues(b, allTraces[0], wantData)
 	}
 }
 
@@ -550,7 +658,7 @@ func TestOTLPReceiverInvalidContentEncoding(t *testing.T) {
 	url := fmt.Sprintf("http://%s/v1/traces", addr)
 
 	// Wait for the servers to start
-	<-time.After(10 * time.Millisecond)
+	<-time.After(100 * time.Millisecond)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -899,7 +1007,7 @@ func newGRPCReceiver(t *testing.T, endpoint string, tc consumer.Traces, mc consu
 	return newReceiver(t, factory, cfg, otlpReceiverID, tc, mc)
 }
 
-func newHTTPReceiver(t *testing.T, endpoint string, tc consumer.Traces, mc consumer.Metrics) component.Component {
+func newHTTPReceiver(t testing.TB, endpoint string, tc consumer.Traces, mc consumer.Metrics) component.Component {
 	factory := NewFactory()
 	cfg := factory.CreateDefaultConfig().(*Config)
 	cfg.HTTP.Endpoint = endpoint
@@ -907,7 +1015,7 @@ func newHTTPReceiver(t *testing.T, endpoint string, tc consumer.Traces, mc consu
 	return newReceiver(t, factory, cfg, otlpReceiverID, tc, mc)
 }
 
-func newReceiver(t *testing.T, factory receiver.Factory, cfg *Config, id component.ID, tc consumer.Traces, mc consumer.Metrics) component.Component {
+func newReceiver(t testing.TB, factory receiver.Factory, cfg *Config, id component.ID, tc consumer.Traces, mc consumer.Metrics) component.Component {
 	set := receivertest.NewNopCreateSettings()
 	set.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
 	set.ID = id
@@ -936,6 +1044,15 @@ func compressGzip(body []byte) (*bytes.Buffer, error) {
 	}
 
 	return &buf, nil
+}
+
+func compressZstd(input []byte) (*bytes.Buffer, error) {
+	zstdEncoder, err := zstd.NewWriter(nil)
+	if err != nil {
+		return nil, err
+	}
+	compressed := zstdEncoder.EncodeAll(input, make([]byte, 0, len(input)))
+	return bytes.NewBuffer(compressed), nil
 }
 
 type senderFunc func(td ptrace.Traces)
