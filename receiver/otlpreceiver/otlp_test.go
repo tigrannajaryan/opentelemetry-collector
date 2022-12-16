@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"sync"
@@ -532,19 +533,15 @@ func testHTTPProtobufRequest(
 
 func BenchmarkProtoHttp(b *testing.B) {
 	tests := []struct {
-		name     string
 		encoding encodingType
 	}{
 		{
-			name:     "ProtoUncompressed",
 			encoding: encodingNone,
 		},
 		{
-			name:     "ProtoGzipCompressed",
 			encoding: encodingGzip,
 		},
 		{
-			name:     "ProtoZstdCompressed",
 			encoding: encodingZstd,
 		},
 	}
@@ -560,16 +557,16 @@ func BenchmarkProtoHttp(b *testing.B) {
 	// Wait for the servers to start
 	<-time.After(100 * time.Millisecond)
 
-	td := testdata.GenerateTraces(1000)
+	td := testdata.GenerateVaryingTraces(1000)
 	marshaler := &ptrace.ProtoMarshaler{}
 	traceBytes, err := marshaler.MarshalTraces(td)
 	require.NoError(b, err)
 
 	for _, test := range tests {
-		b.Run(test.name, func(t *testing.B) {
+		b.Run(string(test.encoding), func(t *testing.B) {
 			url := fmt.Sprintf("http://%s/v1/traces", addr)
 			tSink.Reset()
-			benchmarkHTTPProtobufRequest(t, url, tSink, test.encoding, traceBytes, td)
+			benchmarkHTTPProtobufRequest(t, url, test.encoding, traceBytes)
 		})
 	}
 }
@@ -577,10 +574,8 @@ func BenchmarkProtoHttp(b *testing.B) {
 func benchmarkHTTPProtobufRequest(
 	b *testing.B,
 	url string,
-	tSink *errOrSinkConsumer,
 	encoding encodingType,
 	traceBytes []byte,
-	wantData ptrace.Traces,
 ) {
 	req := createHTTPProtobufRequest(b, url, encoding, traceBytes)
 
@@ -588,26 +583,13 @@ func benchmarkHTTPProtobufRequest(
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-
 		resp, err := client.Do(req)
-		require.NoError(b, err, "Error posting trace to grpc-gateway server: %v", err)
+		require.NoError(b, err, "Error posting trace to server: %v", err)
 
-		bts, err := io.ReadAll(resp.Body)
-		require.NotNil(b, bts)
-		require.NoError(b, err, "Error reading response from trace grpc-gateway")
-		require.NoError(b, resp.Body.Close(), "Error closing response body")
-
-		assert.Equal(b, "application/x-protobuf", resp.Header.Get("Content-Type"), "Unexpected response Content-Type")
-
-		//allTraces := tSink.AllTraces()
+		io.Copy(ioutil.Discard, resp.Body)
+		resp.Body.Close()
 
 		require.Equal(b, 200, resp.StatusCode, "Unexpected return status")
-
-		//tr := ptraceotlp.NewExportResponse()
-		//assert.NoError(b, tr.UnmarshalProto(respBytes), "Unable to unmarshal response to Response")
-
-		//require.Len(b, allTraces, 1)
-		//assert.EqualValues(b, allTraces[0], wantData)
 	}
 }
 

@@ -22,6 +22,8 @@ import (
 	"compress/zlib"
 	"io"
 	"net/http"
+	"runtime"
+	"sync"
 
 	"github.com/golang/snappy"
 	"github.com/klauspost/compress/zstd"
@@ -117,6 +119,9 @@ type errorHandler func(w http.ResponseWriter, r *http.Request, errorMsg string, 
 
 type decompressor struct {
 	errorHandler
+	// A pool of zstd decoders. zstd recommends storing the decoders to reduce the allocations
+	// and improve performance: https://pkg.go.dev/github.com/klauspost/compress/zstd#readme-allocation-less-operation
+	zstDecoders sync.Pool
 }
 
 type decompressorOption func(d *decompressor)
@@ -132,7 +137,21 @@ func withErrorHandlerForDecompressor(e errorHandler) decompressorOption {
 // request body so that the handlers further in the chain can work on decompressed data.
 // It supports gzip and deflate/zlib compression.
 func httpContentDecompressor(h http.Handler, opts ...decompressorOption) http.Handler {
-	d := &decompressor{}
+	d := &decompressor{
+		zstDecoders: sync.Pool{New: func() interface{} {
+			r, err := zstd.NewReader(nil)
+			if err != nil {
+				return nil
+			}
+
+			// Make sure we deallocate the decoder properly once it is not in use and is
+			// no longer referenced from the pool.
+			runtime.SetFinalizer(r, func(d *zstd.Decoder) {
+				d.Close()
+			})
+			return r
+		}},
+	}
 	for _, o := range opts {
 		o(d)
 	}
@@ -144,7 +163,7 @@ func httpContentDecompressor(h http.Handler, opts ...decompressorOption) http.Ha
 
 func (d *decompressor) wrap(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		newBody, err := newBodyReader(r)
+		newBody, err := d.newBodyReader(r)
 		if err != nil {
 			d.errorHandler(w, r, err.Error(), http.StatusBadRequest)
 			return
@@ -163,7 +182,18 @@ func (d *decompressor) wrap(h http.Handler) http.Handler {
 	})
 }
 
-func newBodyReader(r *http.Request) (io.ReadCloser, error) {
+type zstdClosableReader struct {
+	io.Reader
+	decompressor *decompressor
+	decoder      *zstd.Decoder
+}
+
+func (z zstdClosableReader) Close() error {
+	z.decompressor.zstDecoders.Put(z.decoder)
+	return nil
+}
+
+func (d *decompressor) newBodyReader(r *http.Request) (io.ReadCloser, error) {
 	switch r.Header.Get("Content-Encoding") {
 	case "gzip":
 		gr, err := gzip.NewReader(r.Body)
@@ -178,7 +208,17 @@ func newBodyReader(r *http.Request) (io.ReadCloser, error) {
 		}
 		return zr, nil
 	case "zstd":
-		zr, err := zstd.NewReader(r.Body, zstd.WithDecoderConcurrency(1))
+		//decoder := d.zstDecoders.Get().(*zstd.Decoder)
+		//if err := decoder.Reset(r.Body); err != nil {
+		//	d.zstDecoders.Put(decoder)
+		//	return nil, err
+		//}
+		//return zstdClosableReader{
+		//	Reader:       decoder,
+		//	decompressor: d,
+		//	decoder:      decoder,
+		//}, nil
+		zr, err := zstd.NewReader(r.Body)
 		if err != nil {
 			return nil, err
 		}

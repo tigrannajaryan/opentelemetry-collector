@@ -15,6 +15,7 @@
 package testdata
 
 import (
+	"strconv"
 	"time"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -76,4 +77,42 @@ func fillSpanTwo(span ptrace.Span) {
 	link1 := span.Links().AppendEmpty()
 	link1.SetDroppedAttributesCount(4)
 	span.SetDroppedLinksCount(3)
+}
+
+// GenerateVaryingTraces creates a traces with spans that have a content that is not identical.
+// Every span will be slightly different. These are useful for a bit more realistic benchmarking
+// of compression algorithms (compared to GenerateTraces which generates traces entirely composed of 2
+// span contents).
+func GenerateVaryingTraces(spanCount int) ptrace.Traces {
+	td := ptrace.NewTraces()
+	initResource(td.ResourceSpans().AppendEmpty().Resource())
+	ss := td.ResourceSpans().At(0).ScopeSpans().AppendEmpty().Spans()
+	ss.EnsureCapacity(spanCount)
+	for i := 0; i < spanCount; i++ {
+		fillVaryingSpan(ss.AppendEmpty(), i)
+	}
+	return td
+}
+
+func fillVaryingSpan(span ptrace.Span, i int) {
+	span.SetName("operationA" + strconv.Itoa(i))
+	span.SetStartTimestamp(spanStartTimestamp)
+	span.SetEndTimestamp(spanEndTimestamp)
+	span.SetDroppedAttributesCount(uint32(i % 3))
+	span.SetTraceID([16]byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, byte(i % 10)})
+	span.SetSpanID([8]byte{0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, byte(i)})
+	evs := span.Events()
+	ev0 := evs.AppendEmpty()
+	ev0.SetTimestamp(spanEventTimestamp)
+	ev0.SetName("event-with-attr" + strconv.Itoa(i))
+	ev0.Attributes().PutStr("span-event-attr", "span-event-attr-val"+strconv.Itoa(i))
+	ev0.SetDroppedAttributesCount(uint32(i % 2))
+	ev1 := evs.AppendEmpty()
+	ev1.SetTimestamp(spanEventTimestamp)
+	ev1.SetName("event" + strconv.Itoa(i*3))
+	ev1.SetDroppedAttributesCount(2)
+	span.SetDroppedEventsCount(1)
+	status := span.Status()
+	status.SetCode(ptrace.StatusCodeError)
+	status.SetMessage("status-cancelled" + strconv.Itoa(i*7))
 }
