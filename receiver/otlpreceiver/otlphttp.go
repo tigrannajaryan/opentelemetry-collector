@@ -4,7 +4,7 @@
 package otlpreceiver // import "go.opentelemetry.io/collector/receiver/otlpreceiver"
 
 import (
-	"io"
+	"bytes"
 	"mime"
 	"net/http"
 
@@ -101,7 +101,15 @@ func handleLogs(resp http.ResponseWriter, req *http.Request, logsReceiver *logs.
 }
 
 func readAndCloseBody(resp http.ResponseWriter, req *http.Request, encoder encoder) ([]byte, bool) {
-	body, err := io.ReadAll(req.Body)
+	var buf *bytes.Buffer
+	if req.ContentLength > 0 {
+		buf = bytes.NewBuffer(make([]byte, 0, req.ContentLength))
+	} else {
+		buf = bytes.NewBuffer(nil)
+	}
+	_, err := buf.ReadFrom(req.Body)
+	body := buf.Bytes()
+
 	if err != nil {
 		writeError(resp, encoder, err, http.StatusBadRequest)
 		return nil, false

@@ -13,6 +13,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -492,7 +493,7 @@ func TestProtoHttp(t *testing.T) {
 }
 
 func createHTTPProtobufRequest(
-	t *testing.T,
+	t testing.TB,
 	url string,
 	encoding string,
 	traceBytes []byte,
@@ -983,7 +984,7 @@ func newGRPCReceiver(t *testing.T, settings component.TelemetrySettings, endpoin
 	return newReceiver(t, settings, factory, cfg, otlpReceiverID, tc, mc)
 }
 
-func newHTTPReceiver(t *testing.T, settings component.TelemetrySettings, endpoint string, tracesURLPath string, metricsURLPath string, logsURLPath string, tc consumer.Traces, mc consumer.Metrics) component.Component {
+func newHTTPReceiver(t testing.TB, settings component.TelemetrySettings, endpoint string, tracesURLPath string, metricsURLPath string, logsURLPath string, tc consumer.Traces, mc consumer.Metrics) component.Component {
 	factory := NewFactory()
 	cfg := factory.CreateDefaultConfig().(*Config)
 	cfg.HTTP.Endpoint = endpoint
@@ -994,7 +995,7 @@ func newHTTPReceiver(t *testing.T, settings component.TelemetrySettings, endpoin
 	return newReceiver(t, settings, factory, cfg, otlpReceiverID, tc, mc)
 }
 
-func newReceiver(t *testing.T, settings component.TelemetrySettings, factory receiver.Factory, cfg *Config, id component.ID, tc consumer.Traces, mc consumer.Metrics) component.Component {
+func newReceiver(t testing.TB, settings component.TelemetrySettings, factory receiver.Factory, cfg *Config, id component.ID, tc consumer.Traces, mc consumer.Metrics) component.Component {
 	set := receivertest.NewNopCreateSettings()
 	set.TelemetrySettings = settings
 	set.ID = id
@@ -1208,5 +1209,67 @@ func (esc *errOrSinkConsumer) Reset() {
 	}
 	if esc.MetricsSink != nil {
 		esc.MetricsSink.Reset()
+	}
+}
+
+func BenchmarkProtoHttp(b *testing.B) {
+	tests := []struct {
+		name     string
+		encoding string
+		err      error
+	}{
+		{
+			name:     "Uncompressed",
+			encoding: "",
+		},
+		{
+			name:     "Gzip",
+			encoding: "gzip",
+		},
+		{
+			name:     "Zstd",
+			encoding: "zstd",
+		},
+	}
+	addr := testutil.GetAvailableLocalAddress(b)
+
+	// Set the buffer count to 1 to make it flush the test span immediately.
+	tSink := &errOrSinkConsumer{TracesSink: new(consumertest.TracesSink)}
+	ocr := newHTTPReceiver(b, componenttest.NewNopTelemetrySettings(), addr, defaultTracesURLPath, defaultMetricsURLPath, defaultLogsURLPath, tSink, consumertest.NewNop())
+
+	require.NoError(b, ocr.Start(context.Background(), componenttest.NewNopHost()), "Failed to start trace receiver")
+	b.Cleanup(func() { require.NoError(b, ocr.Shutdown(context.Background())) })
+
+	// TODO(nilebox): make starting server deterministic
+	// Wait for the servers to start
+	<-time.After(10 * time.Millisecond)
+
+	for _, spanCount := range []int{1, 100, 1000} {
+		td := testdata.GenerateTraces(spanCount)
+		marshaler := &ptrace.ProtoMarshaler{}
+		traceBytes, err := marshaler.MarshalTraces(td)
+		require.NoError(b, err)
+
+		for _, test := range tests {
+
+			b.Run(
+				test.name+"/Spans="+strconv.Itoa(spanCount), func(b *testing.B) {
+					url := fmt.Sprintf("http://%s%s", addr, defaultTracesURLPath)
+					client := &http.Client{}
+
+					for i := 0; i < b.N; i++ {
+						tSink.Reset()
+
+						req := createHTTPProtobufRequest(b, url, test.encoding, traceBytes)
+						resp, err := client.Do(req)
+						require.NoError(b, err, "Error posting trace to grpc-gateway server: %v", err)
+
+						_, err = io.ReadAll(resp.Body)
+						require.NoError(b, err, "Error reading response from trace grpc-gateway")
+						require.NoError(b, resp.Body.Close(), "Error closing response body")
+					}
+				},
+			)
+		}
 	}
 }
