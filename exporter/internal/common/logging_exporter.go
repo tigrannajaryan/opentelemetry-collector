@@ -5,11 +5,14 @@ package common // import "go.opentelemetry.io/collector/exporter/internal/common
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/fatih/color"
 	"go.uber.org/zap"
 
 	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.opentelemetry.io/collector/exporter/internal/otlptext"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -36,6 +39,67 @@ func (s *loggingExporter) pushTraces(_ context.Context, td ptrace.Traces) error 
 		return err
 	}
 	s.logger.Info(string(buf))
+
+	rss := td.ResourceSpans()
+	for i := 0; i < rss.Len(); i++ {
+		scs := rss.At(i).ScopeSpans()
+		for j := 0; j < scs.Len(); j++ {
+			scope := scs.At(j).Scope()
+			spans := scs.At(j).Spans()
+			for k := 0; k < spans.Len(); k++ {
+				span := spans.At(k)
+				fmt.Printf("%s ", span.StartTimestamp().AsTime().Format("15:04:05.000000"))
+				fmt.Printf("%-18s|", scope.Name()+color.HiBlackString("@")+scope.Version())
+
+				var kind string
+				switch span.Kind() {
+				case ptrace.SpanKindUnspecified:
+					kind = "U"
+				case ptrace.SpanKindClient:
+					kind = color.MagentaString("C")
+				case ptrace.SpanKindServer:
+					kind = color.CyanString("S")
+				case ptrace.SpanKindInternal:
+					kind = "I"
+				case ptrace.SpanKindConsumer:
+					kind = "<"
+				case ptrace.SpanKindProducer:
+					kind = ">"
+				}
+				fmt.Printf("%s|", kind)
+
+				duration := fmt.Sprintf("%8s", span.EndTimestamp().AsTime().Sub(span.StartTimestamp().AsTime()).String())
+				fmt.Printf("%s", duration)
+
+				name := fmt.Sprintf("|%-20s|", span.Name())
+				statusCode := span.Status().Code()
+				switch statusCode {
+				case ptrace.StatusCodeOk:
+					name = color.HiGreenString(name)
+				case ptrace.StatusCodeError:
+					name = color.RedString(name)
+				case ptrace.StatusCodeUnset:
+					name = color.GreenString(name)
+				}
+				fmt.Printf("%s", name)
+
+				attrs := span.Attributes()
+				attrs.Range(
+					func(k string, v pcommon.Value) bool {
+						fmt.Printf("%s=%s ", k, v.AsString())
+						return true
+					})
+
+				fmt.Print("\n")
+
+				fmt.Printf("  %-32s:", color.HiBlackString(span.TraceID().String()))
+				fmt.Printf("%-16s>", color.HiBlackString(span.ParentSpanID().String()))
+				fmt.Printf("%-16s", color.HiBlackString(span.SpanID().String()))
+				fmt.Print("\n")
+			}
+		}
+	}
+
 	return nil
 }
 
