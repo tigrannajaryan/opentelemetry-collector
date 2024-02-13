@@ -42,65 +42,80 @@ func (s *loggingExporter) pushTraces(_ context.Context, td ptrace.Traces) error 
 
 	rss := td.ResourceSpans()
 	for i := 0; i < rss.Len(); i++ {
+		resource := rss.At(i).Resource()
+		fmt.Print("Resource:\n")
+		printAttrs(resource.Attributes())
+		fmt.Print("\n")
+
 		scs := rss.At(i).ScopeSpans()
 		for j := 0; j < scs.Len(); j++ {
-			scope := scs.At(j).Scope()
-			spans := scs.At(j).Spans()
+			scopeSpans := scs.At(j)
+			scope := scopeSpans.Scope()
+			spans := scopeSpans.Spans()
 			for k := 0; k < spans.Len(); k++ {
 				span := spans.At(k)
 				fmt.Printf("%s ", span.StartTimestamp().AsTime().Format("15:04:05.000000"))
-				fmt.Printf("%-18s|", scope.Name()+color.HiBlackString("@")+scope.Version())
 
 				var kind string
 				switch span.Kind() {
 				case ptrace.SpanKindUnspecified:
 					kind = "U"
 				case ptrace.SpanKindClient:
-					kind = color.MagentaString("C")
+					kind = color.MagentaString("C>")
 				case ptrace.SpanKindServer:
-					kind = color.CyanString("S")
+					kind = color.CyanString(">S")
 				case ptrace.SpanKindInternal:
-					kind = "I"
+					kind = "I "
 				case ptrace.SpanKindConsumer:
-					kind = "<"
+					kind = ">C"
 				case ptrace.SpanKindProducer:
-					kind = ">"
+					kind = "P>"
 				}
 				fmt.Printf("%s|", kind)
 
 				duration := fmt.Sprintf("%8s", span.EndTimestamp().AsTime().Sub(span.StartTimestamp().AsTime()).String())
 				fmt.Printf("%s", duration)
 
-				name := fmt.Sprintf("|%-20s|", span.Name())
+				nameAndMessage := fmt.Sprintf("|%-20s|", span.Name())
+				if span.Status().Message() != "" {
+					nameAndMessage += span.Status().Message() + "|"
+				}
+
 				statusCode := span.Status().Code()
 				switch statusCode {
 				case ptrace.StatusCodeOk:
-					name = color.HiGreenString(name)
+					nameAndMessage = color.HiGreenString(nameAndMessage)
 				case ptrace.StatusCodeError:
-					name = color.RedString(name)
+					nameAndMessage = color.RedString(nameAndMessage)
 				case ptrace.StatusCodeUnset:
-					name = color.GreenString(name)
+					nameAndMessage = color.GreenString(nameAndMessage)
 				}
-				fmt.Printf("%s", name)
-
-				attrs := span.Attributes()
-				attrs.Range(
-					func(k string, v pcommon.Value) bool {
-						fmt.Printf("%s=%s ", k, v.AsString())
-						return true
-					})
+				fmt.Printf("%s", nameAndMessage)
 
 				fmt.Print("\n")
 
-				fmt.Printf("  %-32s:", color.HiBlackString(span.TraceID().String()))
-				fmt.Printf("%-16s>", color.HiBlackString(span.ParentSpanID().String()))
-				fmt.Printf("%-16s", color.HiBlackString(span.SpanID().String()))
+				if scope.Name() != "" || scope.Version() != "" || scopeSpans.SchemaUrl() != "" {
+					fmt.Printf("  %-18s %s\n", scope.Name()+"@"+scope.Version(), scopeSpans.SchemaUrl())
+				}
+
+				fmt.Printf("  %-32s:", span.TraceID().String())
+				fmt.Printf("%-16s>", span.ParentSpanID().String())
+				fmt.Printf("%-16s", span.SpanID().String())
 				fmt.Print("\n")
+				printAttrs(span.Attributes())
 			}
 		}
 	}
 
 	return nil
+}
+
+func printAttrs(attrs pcommon.Map) {
+	attrs.Range(
+		func(k string, v pcommon.Value) bool {
+			fmt.Printf("  %-20s%s\n", k+":", v.AsString())
+			return true
+		})
 }
 
 func (s *loggingExporter) pushMetrics(_ context.Context, md pmetric.Metrics) error {
