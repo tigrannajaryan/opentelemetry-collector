@@ -28,7 +28,7 @@ var exportEntitiesPartialSuccess = &messageValueStruct{
 	originFullName: "otlpcollectorentity.ExportEntitiesPartialSuccess",
 	fields: []baseField{
 		&primitiveField{
-			fieldName:  "RejectedEntityRecords",
+			fieldName:  "RejectedEntities",
 			returnType: "int64",
 			defaultVal: `int64(0)`,
 			testVal:    `int64(13)`,

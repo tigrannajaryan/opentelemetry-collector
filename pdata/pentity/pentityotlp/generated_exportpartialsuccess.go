@@ -45,15 +45,15 @@ func (ms ExportPartialSuccess) MoveTo(dest ExportPartialSuccess) {
 	*ms.orig = otlpcollectorentity.ExportEntitiesPartialSuccess{}
 }
 
-// RejectedEntityRecords returns the rejectedentityrecords associated with this ExportPartialSuccess.
-func (ms ExportPartialSuccess) RejectedEntityRecords() int64 {
-	return ms.orig.RejectedEntityRecords
+// RejectedEntities returns the rejectedentities associated with this ExportPartialSuccess.
+func (ms ExportPartialSuccess) RejectedEntities() int64 {
+	return ms.orig.RejectedEntities
 }
 
-// SetRejectedEntityRecords replaces the rejectedentityrecords associated with this ExportPartialSuccess.
-func (ms ExportPartialSuccess) SetRejectedEntityRecords(v int64) {
+// SetRejectedEntities replaces the rejectedentities associated with this ExportPartialSuccess.
+func (ms ExportPartialSuccess) SetRejectedEntities(v int64) {
 	ms.state.AssertMutable()
-	ms.orig.RejectedEntityRecords = v
+	ms.orig.RejectedEntities = v
 }
 
 // ErrorMessage returns the errormessage associated with this ExportPartialSuccess.
@@ -70,6 +70,6 @@ func (ms ExportPartialSuccess) SetErrorMessage(v string) {
 // CopyTo copies all properties from the current struct overriding the destination.
 func (ms ExportPartialSuccess) CopyTo(dest ExportPartialSuccess) {
 	dest.state.AssertMutable()
-	dest.SetRejectedEntityRecords(ms.RejectedEntityRecords())
+	dest.SetRejectedEntities(ms.RejectedEntities())
 	dest.SetErrorMessage(ms.ErrorMessage())
 }

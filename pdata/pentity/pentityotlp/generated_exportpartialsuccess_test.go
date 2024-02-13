@@ -44,14 +44,14 @@ func TestExportPartialSuccess_CopyTo(t *testing.T) {
 	})
 }
 
-func TestExportPartialSuccess_RejectedEntityRecords(t *testing.T) {
+func TestExportPartialSuccess_RejectedEntities(t *testing.T) {
 	ms := NewExportPartialSuccess()
-	assert.Equal(t, int64(0), ms.RejectedEntityRecords())
-	ms.SetRejectedEntityRecords(int64(13))
-	assert.Equal(t, int64(13), ms.RejectedEntityRecords())
+	assert.Equal(t, int64(0), ms.RejectedEntities())
+	ms.SetRejectedEntities(int64(13))
+	assert.Equal(t, int64(13), ms.RejectedEntities())
 	sharedState := internal.StateReadOnly
 	assert.Panics(t, func() {
-		newExportPartialSuccess(&otlpcollectorentity.ExportEntitiesPartialSuccess{}, &sharedState).SetRejectedEntityRecords(int64(13))
+		newExportPartialSuccess(&otlpcollectorentity.ExportEntitiesPartialSuccess{}, &sharedState).SetRejectedEntities(int64(13))
 	})
 }
 
@@ -73,6 +73,6 @@ func generateTestExportPartialSuccess() ExportPartialSuccess {
 }
 
 func fillTestExportPartialSuccess(tv ExportPartialSuccess) {
-	tv.orig.RejectedEntityRecords = int64(13)
+	tv.orig.RejectedEntities = int64(13)
 	tv.orig.ErrorMessage = "error message"
 }

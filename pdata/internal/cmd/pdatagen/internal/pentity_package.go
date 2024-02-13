@@ -73,13 +73,13 @@ var entityState = &messageValueStruct{
 			defaultVal: `""`,
 			testVal:    `"service"`,
 		},
-		entityId,
+		entityID,
 		attributes,
 		droppedAttributesCount,
 	},
 }
 
-var entityId = &sliceField{
+var entityID = &sliceField{
 	fieldName:   "Id",
 	returnSlice: mapStruct,
 }
