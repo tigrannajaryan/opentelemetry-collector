@@ -146,7 +146,7 @@ func (m *ScopeEntities) GetSchemaUrl() string {
 	return ""
 }
 
-// The full state of the Entity.
+// Entity event, describes something that happened with the entity.
 type EntityEvent struct {
 	// Time when this state was observed.
 	TimeUnixNano uint64 `protobuf:"varint,1,opt,name=time_unix_nano,json=timeUnixNano,proto3" json:"time_unix_nano,omitempty"`
@@ -154,6 +154,8 @@ type EntityEvent struct {
 	EntityType string `protobuf:"bytes,2,opt,name=entity_type,json=entityType,proto3" json:"entity_type,omitempty"`
 	// Set of attributes that identify the entity.
 	Id []v1.KeyValue `protobuf:"bytes,3,rep,name=id,proto3" json:"id"`
+	// One of the following event types must be set.
+	//
 	// Types that are valid to be assigned to Data:
 	//	*EntityEvent_EntityState
 	//	*EntityEvent_EntityDelete
@@ -259,6 +261,7 @@ func (*EntityEvent) XXX_OneofWrappers() []interface{} {
 	}
 }
 
+// The full state of the Entity.
 type EntityState struct {
 	// Set of non-identifying attributes only.
 	Attributes             []v1.KeyValue `protobuf:"bytes,4,rep,name=attributes,proto3" json:"attributes"`
@@ -312,6 +315,7 @@ func (m *EntityState) GetDroppedAttributesCount() uint32 {
 	return 0
 }
 
+// Deletion event. No additional information is recorded.
 type EntityDelete struct {
 }
 
