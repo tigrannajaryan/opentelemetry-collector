@@ -62,9 +62,9 @@ func (ms ScopeEntities) SetSchemaUrl(v string) {
 	ms.orig.SchemaUrl = v
 }
 
-// EntityStates returns the EntityStates associated with this ScopeEntities.
-func (ms ScopeEntities) EntityStates() EntityStateSlice {
-	return newEntityStateSlice(&ms.orig.EntityStates, ms.state)
+// EntityEvents returns the EntityEvents associated with this ScopeEntities.
+func (ms ScopeEntities) EntityEvents() EntityEventSlice {
+	return newEntityEventSlice(&ms.orig.EntityEvents, ms.state)
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.
@@ -72,5 +72,5 @@ func (ms ScopeEntities) CopyTo(dest ScopeEntities) {
 	dest.state.AssertMutable()
 	ms.Scope().CopyTo(dest.Scope())
 	dest.SetSchemaUrl(ms.SchemaUrl())
-	ms.EntityStates().CopyTo(dest.EntityStates())
+	ms.EntityEvents().CopyTo(dest.EntityEvents())
 }

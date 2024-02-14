@@ -56,11 +56,11 @@ func TestScopeEntities_SchemaUrl(t *testing.T) {
 	})
 }
 
-func TestScopeEntities_EntityStates(t *testing.T) {
+func TestScopeEntities_EntityEvents(t *testing.T) {
 	ms := NewScopeEntities()
-	assert.Equal(t, NewEntityStateSlice(), ms.EntityStates())
-	fillTestEntityStateSlice(ms.EntityStates())
-	assert.Equal(t, generateTestEntityStateSlice(), ms.EntityStates())
+	assert.Equal(t, NewEntityEventSlice(), ms.EntityEvents())
+	fillTestEntityEventSlice(ms.EntityEvents())
+	assert.Equal(t, generateTestEntityEventSlice(), ms.EntityEvents())
 }
 
 func generateTestScopeEntities() ScopeEntities {
@@ -72,5 +72,5 @@ func generateTestScopeEntities() ScopeEntities {
 func fillTestScopeEntities(tv ScopeEntities) {
 	internal.FillTestInstrumentationScope(internal.NewInstrumentationScope(&tv.orig.Scope, tv.state))
 	tv.orig.SchemaUrl = "https://opentelemetry.io/schemas/1.5.0"
-	fillTestEntityStateSlice(newEntityStateSlice(&tv.orig.EntityStates, tv.state))
+	fillTestEntityEventSlice(newEntityEventSlice(&tv.orig.EntityEvents, tv.state))
 }
