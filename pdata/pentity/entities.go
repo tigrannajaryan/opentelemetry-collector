@@ -46,7 +46,7 @@ func (ms Entities) LogRecordCount() int {
 	ill := ms.ScopeEntities()
 	for i := 0; i < ill.Len(); i++ {
 		entities := ill.At(i)
-		logCount += entities.EntityStates().Len()
+		logCount += entities.EntityEvents().Len()
 	}
 	return logCount
 }

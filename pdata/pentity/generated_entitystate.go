@@ -46,33 +46,6 @@ func (ms EntityState) MoveTo(dest EntityState) {
 	*ms.orig = otlpentities.EntityState{}
 }
 
-// Timestamp returns the timestamp associated with this EntityState.
-func (ms EntityState) Timestamp() pcommon.Timestamp {
-	return pcommon.Timestamp(ms.orig.TimeUnixNano)
-}
-
-// SetTimestamp replaces the timestamp associated with this EntityState.
-func (ms EntityState) SetTimestamp(v pcommon.Timestamp) {
-	ms.state.AssertMutable()
-	ms.orig.TimeUnixNano = uint64(v)
-}
-
-// Type returns the type associated with this EntityState.
-func (ms EntityState) Type() string {
-	return ms.orig.Type
-}
-
-// SetType replaces the type associated with this EntityState.
-func (ms EntityState) SetType(v string) {
-	ms.state.AssertMutable()
-	ms.orig.Type = v
-}
-
-// Id returns the Id associated with this EntityState.
-func (ms EntityState) Id() pcommon.Map {
-	return pcommon.Map(internal.NewMap(&ms.orig.Id, ms.state))
-}
-
 // Attributes returns the Attributes associated with this EntityState.
 func (ms EntityState) Attributes() pcommon.Map {
 	return pcommon.Map(internal.NewMap(&ms.orig.Attributes, ms.state))
@@ -92,9 +65,6 @@ func (ms EntityState) SetDroppedAttributesCount(v uint32) {
 // CopyTo copies all properties from the current struct overriding the destination.
 func (ms EntityState) CopyTo(dest EntityState) {
 	dest.state.AssertMutable()
-	dest.SetTimestamp(ms.Timestamp())
-	dest.SetType(ms.Type())
-	ms.Id().CopyTo(dest.Id())
 	ms.Attributes().CopyTo(dest.Attributes())
 	dest.SetDroppedAttributesCount(ms.DroppedAttributesCount())
 }

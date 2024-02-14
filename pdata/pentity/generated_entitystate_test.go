@@ -39,30 +39,6 @@ func TestEntityState_CopyTo(t *testing.T) {
 	assert.Panics(t, func() { ms.CopyTo(newEntityState(&otlpentities.EntityState{}, &sharedState)) })
 }
 
-func TestEntityState_Timestamp(t *testing.T) {
-	ms := NewEntityState()
-	assert.Equal(t, pcommon.Timestamp(0), ms.Timestamp())
-	testValTimestamp := pcommon.Timestamp(1234567890)
-	ms.SetTimestamp(testValTimestamp)
-	assert.Equal(t, testValTimestamp, ms.Timestamp())
-}
-
-func TestEntityState_Type(t *testing.T) {
-	ms := NewEntityState()
-	assert.Equal(t, "", ms.Type())
-	ms.SetType("service")
-	assert.Equal(t, "service", ms.Type())
-	sharedState := internal.StateReadOnly
-	assert.Panics(t, func() { newEntityState(&otlpentities.EntityState{}, &sharedState).SetType("service") })
-}
-
-func TestEntityState_Id(t *testing.T) {
-	ms := NewEntityState()
-	assert.Equal(t, pcommon.NewMap(), ms.Id())
-	internal.FillTestMap(internal.Map(ms.Id()))
-	assert.Equal(t, pcommon.Map(internal.GenerateTestMap()), ms.Id())
-}
-
 func TestEntityState_Attributes(t *testing.T) {
 	ms := NewEntityState()
 	assert.Equal(t, pcommon.NewMap(), ms.Attributes())
@@ -88,9 +64,6 @@ func generateTestEntityState() EntityState {
 }
 
 func fillTestEntityState(tv EntityState) {
-	tv.orig.TimeUnixNano = 1234567890
-	tv.orig.Type = "service"
-	internal.FillTestMap(internal.NewMap(&tv.orig.Id, tv.state))
 	internal.FillTestMap(internal.NewMap(&tv.orig.Attributes, tv.state))
 	tv.orig.DroppedAttributesCount = uint32(17)
 }

@@ -28,8 +28,10 @@ var pentity = &Package{
 	structs: []baseStruct{
 		scopeEntitiesSlice,
 		scopeEntities,
-		entitieslice,
+		entityEventSlice,
+		entityEvent,
 		entityState,
+		entityDelete,
 	},
 }
 
@@ -46,21 +48,21 @@ var scopeEntities = &messageValueStruct{
 		scopeField,
 		schemaURLField,
 		&sliceField{
-			fieldName:   "EntityStates",
-			returnSlice: entitieslice,
+			fieldName:   "EntityEvents",
+			returnSlice: entityEventSlice,
 		},
 	},
 }
 
-var entitieslice = &sliceOfPtrs{
-	structName: "EntityStateSlice",
-	element:    entityState,
+var entityEventSlice = &sliceOfPtrs{
+	structName: "EntityEventSlice",
+	element:    entityEvent,
 }
 
-var entityState = &messageValueStruct{
-	structName:     "EntityState",
-	description:    "// EntityState are experimental implementation of OpenTelemetry Entity Data Model.\n",
-	originFullName: "otlpentities.EntityState",
+var entityEvent = &messageValueStruct{
+	structName:     "EntityEvent",
+	description:    "// EntityEvent are experimental implementation of OpenTelemetry Entity Data Model.\n",
+	originFullName: "otlpentities.EntityEvent",
 	fields: []baseField{
 		&primitiveTypedField{
 			fieldName:       "Timestamp",
@@ -68,18 +70,51 @@ var entityState = &messageValueStruct{
 			returnType:      timestampType,
 		},
 		&primitiveField{
-			fieldName:  "Type",
+			fieldName:  "EntityType",
 			returnType: "string",
 			defaultVal: `""`,
 			testVal:    `"service"`,
 		},
 		entityID,
-		attributes,
-		droppedAttributesCount,
+		&oneOfField{
+			typeName:                   "EventType",
+			originFieldName:            "Data",
+			testValueIdx:               1, // Delete
+			omitOriginFieldNameInNames: true,
+			values: []oneOfValue{
+				&oneOfMessageValue{
+					fieldName:              "EntityState",
+					originFieldPackageName: "otlpentities",
+					returnMessage:          entityState,
+				},
+				&oneOfMessageValue{
+					fieldName:              "EntityDelete",
+					originFieldPackageName: "otlpentities",
+					returnMessage:          entityDelete,
+				},
+			},
+		},
 	},
 }
 
 var entityID = &sliceField{
 	fieldName:   "Id",
 	returnSlice: mapStruct,
+}
+
+var entityState = &messageValueStruct{
+	structName:     "EntityState",
+	description:    "// EntityState are experimental implementation of OpenTelemetry Entity Data Model.\n",
+	originFullName: "otlpentities.EntityState",
+	fields: []baseField{
+		attributes,
+		droppedAttributesCount,
+	},
+}
+
+var entityDelete = &messageValueStruct{
+	structName:     "EntityDelete",
+	description:    "// EntityDelete are experimental implementation of OpenTelemetry Entity Data Model.\n",
+	originFullName: "otlpentities.EntityDelete",
+	fields:         []baseField{},
 }
