@@ -66,9 +66,27 @@ func (ms Resource) SetDroppedAttributesCount(v uint32) {
 	ms.getOrig().DroppedAttributesCount = v
 }
 
+// EntityType returns the entitytype associated with this Resource.
+func (ms Resource) EntityType() string {
+	return ms.getOrig().EntityType
+}
+
+// SetEntityType replaces the entitytype associated with this Resource.
+func (ms Resource) SetEntityType(v string) {
+	ms.getState().AssertMutable()
+	ms.getOrig().EntityType = v
+}
+
+// EntityId returns the EntityId associated with this Resource.
+func (ms Resource) EntityId() Map {
+	return Map(internal.NewMap(&ms.getOrig().EntityId, internal.GetResourceState(internal.Resource(ms))))
+}
+
 // CopyTo copies all properties from the current struct overriding the destination.
 func (ms Resource) CopyTo(dest Resource) {
 	dest.getState().AssertMutable()
 	ms.Attributes().CopyTo(dest.Attributes())
 	dest.SetDroppedAttributesCount(ms.DroppedAttributesCount())
+	dest.SetEntityType(ms.EntityType())
+	ms.EntityId().CopyTo(dest.EntityId())
 }

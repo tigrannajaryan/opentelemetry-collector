@@ -155,7 +155,19 @@ var resource = &messageValueStruct{
 	fields: []baseField{
 		attributes,
 		droppedAttributesCount,
+		&primitiveField{
+			fieldName:  "EntityType",
+			returnType: "string",
+			defaultVal: `""`,
+			testVal:    `"service"`,
+		},
+		resourceEntityID,
 	},
+}
+
+var resourceEntityID = &sliceField{
+	fieldName:   "EntityId",
+	returnSlice: mapStruct,
 }
 
 var resourceField = &messageValueField{
