@@ -31,6 +31,12 @@ type Logs interface {
 	consumer.Logs
 }
 
+// Entities is an exporter that can consume entities.
+type Entities interface {
+	component.Component
+	consumer.Entities
+}
+
 // CreateSettings configures exporter creators.
 type CreateSettings struct {
 	// ID returns the ID of the component that will be created.
@@ -72,6 +78,14 @@ type Factory interface {
 
 	// LogsExporterStability gets the stability level of the LogsExporter.
 	LogsExporterStability() component.StabilityLevel
+
+	// CreateEntitiesExporter creates a EntitiesExporter based on the config.
+	// If the exporter type does not support entities or if the config is not valid,
+	// an error will be returned instead.
+	CreateEntitiesExporter(ctx context.Context, set CreateSettings, cfg component.Config) (Entities, error)
+
+	// EntitiesExporterStability gets the stability level of the EntitiesExporter.
+	EntitiesExporterStability() component.StabilityLevel
 
 	unexportedFactoryFunc()
 }
@@ -124,6 +138,17 @@ func (f CreateLogsFunc) CreateLogsExporter(ctx context.Context, set CreateSettin
 	return f(ctx, set, cfg)
 }
 
+// CreateEntitiesFunc is the equivalent of Factory.CreateEntities.
+type CreateEntitiesFunc func(context.Context, CreateSettings, component.Config) (Entities, error)
+
+// CreateEntitiesExporter implements Factory.CreateEntitiesExporter().
+func (f CreateEntitiesFunc) CreateEntitiesExporter(ctx context.Context, set CreateSettings, cfg component.Config) (Entities, error) {
+	if f == nil {
+		return nil, component.ErrDataTypeIsNotSupported
+	}
+	return f(ctx, set, cfg)
+}
+
 type factory struct {
 	cfgType component.Type
 	component.CreateDefaultConfigFunc
@@ -133,6 +158,8 @@ type factory struct {
 	metricsStabilityLevel component.StabilityLevel
 	CreateLogsFunc
 	logsStabilityLevel component.StabilityLevel
+	CreateEntitiesFunc
+	entitiesStabilityLevel component.StabilityLevel
 }
 
 func (f *factory) Type() component.Type {
@@ -151,6 +178,10 @@ func (f *factory) MetricsExporterStability() component.StabilityLevel {
 
 func (f *factory) LogsExporterStability() component.StabilityLevel {
 	return f.logsStabilityLevel
+}
+
+func (f *factory) EntitiesExporterStability() component.StabilityLevel {
+	return f.entitiesStabilityLevel
 }
 
 // WithTraces overrides the default "error not supported" implementation for CreateTracesExporter and the default "undefined" stability level.
@@ -174,6 +205,14 @@ func WithLogs(createLogs CreateLogsFunc, sl component.StabilityLevel) FactoryOpt
 	return factoryOptionFunc(func(o *factory) {
 		o.logsStabilityLevel = sl
 		o.CreateLogsFunc = createLogs
+	})
+}
+
+// WithEntities overrides the default "error not supported" implementation for CreateEntitiesExporter and the default "undefined" stability level.
+func WithEntities(createEntities CreateEntitiesFunc, sl component.StabilityLevel) FactoryOption {
+	return factoryOptionFunc(func(o *factory) {
+		o.entitiesStabilityLevel = sl
+		o.CreateEntitiesFunc = createEntities
 	})
 }
 
@@ -259,6 +298,22 @@ func (b *Builder) CreateLogs(ctx context.Context, set CreateSettings) (Logs, err
 
 	logStabilityLevel(set.Logger, f.LogsExporterStability())
 	return f.CreateLogsExporter(ctx, set, cfg)
+}
+
+// CreateEntities creates a Entities exporter based on the settings and config.
+func (b *Builder) CreateEntities(ctx context.Context, set CreateSettings) (Entities, error) {
+	cfg, existsCfg := b.cfgs[set.ID]
+	if !existsCfg {
+		return nil, fmt.Errorf("exporter %q is not configured", set.ID)
+	}
+
+	f, existsFactory := b.factories[set.ID.Type()]
+	if !existsFactory {
+		return nil, fmt.Errorf("exporter factory not available for: %q", set.ID)
+	}
+
+	logStabilityLevel(set.Logger, f.EntitiesExporterStability())
+	return f.CreateEntitiesExporter(ctx, set, cfg)
 }
 
 func (b *Builder) Factory(componentType component.Type) component.Factory {

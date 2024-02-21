@@ -31,6 +31,12 @@ type Logs interface {
 	consumer.Logs
 }
 
+// Entities is a processor that can consume entities.
+type Entities interface {
+	component.Component
+	consumer.Entities
+}
+
 // CreateSettings is passed to Create* functions in Factory.
 type CreateSettings struct {
 	// ID returns the ID of the component that will be created.
@@ -72,6 +78,14 @@ type Factory interface {
 
 	// LogsProcessorStability gets the stability level of the LogsProcessor.
 	LogsProcessorStability() component.StabilityLevel
+
+	// CreateEntitiesProcessor creates a EntitiesProcessor based on the config.
+	// If the processor type does not support entities or if the config is not valid,
+	// an error will be returned instead.
+	CreateEntitiesProcessor(ctx context.Context, set CreateSettings, cfg component.Config, nextConsumer consumer.Entities) (Entities, error)
+
+	// EntitiesProcessorStability gets the stability level of the EntitiesProcessor.
+	EntitiesProcessorStability() component.StabilityLevel
 
 	unexportedFactoryFunc()
 }
@@ -138,6 +152,22 @@ func (f CreateLogsFunc) CreateLogsProcessor(
 	return f(ctx, set, cfg, nextConsumer)
 }
 
+// CreateEntitiesFunc is the equivalent of Factory.CreateEntities().
+type CreateEntitiesFunc func(context.Context, CreateSettings, component.Config, consumer.Entities) (Entities, error)
+
+// CreateEntitiesProcessor implements Factory.CreateEntitiesProcessor().
+func (f CreateEntitiesFunc) CreateEntitiesProcessor(
+	ctx context.Context,
+	set CreateSettings,
+	cfg component.Config,
+	nextConsumer consumer.Entities,
+) (Entities, error) {
+	if f == nil {
+		return nil, component.ErrDataTypeIsNotSupported
+	}
+	return f(ctx, set, cfg, nextConsumer)
+}
+
 type factory struct {
 	cfgType component.Type
 	component.CreateDefaultConfigFunc
@@ -147,6 +177,8 @@ type factory struct {
 	metricsStabilityLevel component.StabilityLevel
 	CreateLogsFunc
 	logsStabilityLevel component.StabilityLevel
+	CreateEntitiesFunc
+	entitiesStabilityLevel component.StabilityLevel
 }
 
 func (f *factory) Type() component.Type {
@@ -165,6 +197,10 @@ func (f factory) MetricsProcessorStability() component.StabilityLevel {
 
 func (f factory) LogsProcessorStability() component.StabilityLevel {
 	return f.logsStabilityLevel
+}
+
+func (f factory) EntitiesProcessorStability() component.StabilityLevel {
+	return f.entitiesStabilityLevel
 }
 
 // WithTraces overrides the default "error not supported" implementation for CreateTraces and the default "undefined" stability level.
@@ -188,6 +224,14 @@ func WithLogs(createLogs CreateLogsFunc, sl component.StabilityLevel) FactoryOpt
 	return factoryOptionFunc(func(o *factory) {
 		o.logsStabilityLevel = sl
 		o.CreateLogsFunc = createLogs
+	})
+}
+
+// WithEntities overrides the default "error not supported" implementation for CreateEntities and the default "undefined" stability level.
+func WithEntities(createEntities CreateEntitiesFunc, sl component.StabilityLevel) FactoryOption {
+	return factoryOptionFunc(func(o *factory) {
+		o.entitiesStabilityLevel = sl
+		o.CreateEntitiesFunc = createEntities
 	})
 }
 
@@ -273,6 +317,22 @@ func (b *Builder) CreateLogs(ctx context.Context, set CreateSettings, next consu
 
 	logStabilityLevel(set.Logger, f.LogsProcessorStability())
 	return f.CreateLogsProcessor(ctx, set, cfg, next)
+}
+
+// CreateEntities creates a Entities processor based on the settings and config.
+func (b *Builder) CreateEntities(ctx context.Context, set CreateSettings, next consumer.Entities) (Entities, error) {
+	cfg, existsCfg := b.cfgs[set.ID]
+	if !existsCfg {
+		return nil, fmt.Errorf("processor %q is not configured", set.ID)
+	}
+
+	f, existsFactory := b.factories[set.ID.Type()]
+	if !existsFactory {
+		return nil, fmt.Errorf("processor factory not available for: %q", set.ID)
+	}
+
+	logStabilityLevel(set.Logger, f.EntitiesProcessorStability())
+	return f.CreateEntitiesProcessor(ctx, set, cfg, next)
 }
 
 func (b *Builder) Factory(componentType component.Type) component.Factory {
