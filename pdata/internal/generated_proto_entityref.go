@@ -208,7 +208,6 @@ func (orig *EntityRef) SizeProto() int {
 	if orig.lazy.HasBytes() {
 		return len(orig.lazy.Bytes())
 	}
-	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -237,7 +236,6 @@ func (orig *EntityRef) MarshalProto(buf []byte) int {
 	if orig.lazy.HasBytes() {
 		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
 	}
-	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
