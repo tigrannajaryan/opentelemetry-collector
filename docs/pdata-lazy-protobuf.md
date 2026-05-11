@@ -32,9 +32,13 @@ The generated message methods use that state as follows:
 * `UnmarshalProto` calls `validate<Message>Proto`, resets the struct, and stores
   the original bytes with `lazy.Init`.
 * `EnsureDecoded` decodes only the current message's direct fields. Embedded
-  generated messages keep their own raw byte references.
+  generated messages keep their own raw byte references. The generated method
+  has a small fast path that returns when the message is nil, locally built, or
+  already decoded; the decode body is split into a cold helper.
 * `MarkModified` clears this message's reusable wire bytes and walks up the
-  parent chain so all ancestors reassemble their output.
+  parent chain so all ancestors reassemble their output. It does not decode the
+  message; callers that mutate fields must call `EnsureDecoded` before clearing
+  the raw bytes.
 * `DecodeAll` recursively materializes a message tree and clears lazy state. It
   is used where code needs ordinary in-memory struct semantics.
 
@@ -91,10 +95,12 @@ bytes are still available, size is `len(bytes)` and marshal copies those bytes
 directly. This preserves the original field order and unknown fields for
 unchanged messages.
 
-When bytes are nil, generated marshal code calls `EnsureDecoded` and encodes the
-struct fields normally. Lazy encoding is per message, so a modified parent can
-still copy raw bytes for unchanged child messages while reassembling the parent
-payload.
+When bytes are nil, generated marshal code encodes the materialized struct
+fields without calling `EnsureDecoded`. That keeps marshal on the raw-byte fast
+path when possible and avoids redundant decode checks for messages that were
+already decoded by accessors before modification. Lazy encoding is per message,
+so a modified parent can still copy raw bytes for unchanged child messages while
+reassembling the parent payload.
 
 Modification tracking is local to each message tree. There is no global state.
 Generated setters and handwritten mutators call `MarkModified`; `MarkModified`
