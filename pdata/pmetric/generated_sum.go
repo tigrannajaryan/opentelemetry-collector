@@ -50,8 +50,7 @@ func (ms Sum) MoveTo(dest Sum) {
 // DataPoints returns the DataPoints associated with this Sum.
 func (ms Sum) DataPoints() NumberDataPointSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newNumberDataPointSlice(&ms.orig.DataPoints, ms.state)
+	return newNumberDataPointSlice(&ms.orig.DataPoints, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // AggregationTemporality returns the aggregationtemporality associated with this Sum.

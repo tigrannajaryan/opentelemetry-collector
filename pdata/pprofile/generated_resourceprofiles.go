@@ -57,8 +57,7 @@ func (ms ResourceProfiles) Resource() pcommon.Resource {
 // ScopeProfiles returns the ScopeProfiles associated with this ResourceProfiles.
 func (ms ResourceProfiles) ScopeProfiles() ScopeProfilesSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newScopeProfilesSlice(&ms.orig.ScopeProfiles, ms.state)
+	return newScopeProfilesSlice(&ms.orig.ScopeProfiles, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // SchemaUrl returns the schemaurl associated with this ResourceProfiles.

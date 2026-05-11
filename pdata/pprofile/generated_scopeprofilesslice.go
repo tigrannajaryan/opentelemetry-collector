@@ -21,19 +21,26 @@ import (
 // Must use NewScopeProfilesSlice function to create new instances.
 // Important: zero-initialized instance is not valid for use.
 type ScopeProfilesSlice struct {
-	orig  *[]*internal.ScopeProfiles
-	state *internal.State
+	orig   *[]*internal.ScopeProfiles
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 
-func newScopeProfilesSlice(orig *[]*internal.ScopeProfiles, state *internal.State) ScopeProfilesSlice {
-	return ScopeProfilesSlice{orig: orig, state: state}
+func newScopeProfilesSlice(orig *[]*internal.ScopeProfiles, state *internal.State, marker *internal.LazyMessage) ScopeProfilesSlice {
+	return ScopeProfilesSlice{orig: orig, state: state, marker: marker}
 }
 
 // NewScopeProfilesSlice creates a ScopeProfilesSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewScopeProfilesSlice() ScopeProfilesSlice {
 	orig := []*internal.ScopeProfiles(nil)
-	return newScopeProfilesSlice(&orig, internal.NewState())
+	return newScopeProfilesSlice(&orig, internal.NewState(), nil)
+}
+
+func (es ScopeProfilesSlice) markModified() {
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -92,6 +99,7 @@ func (es ScopeProfilesSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]*internal.ScopeProfiles, len(*es.orig), newCap)
 	copy(newOrig, *es.orig)
 	*es.orig = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty ScopeProfiles.
@@ -99,6 +107,7 @@ func (es ScopeProfilesSlice) EnsureCapacity(newCap int) {
 func (es ScopeProfilesSlice) AppendEmpty() ScopeProfiles {
 	es.state.AssertMutable()
 	*es.orig = append(*es.orig, internal.NewScopeProfiles())
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -118,6 +127,8 @@ func (es ScopeProfilesSlice) MoveAndAppendTo(dest ScopeProfilesSlice) {
 		*dest.orig = append(*dest.orig, *es.orig...)
 	}
 	*es.orig = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -125,8 +136,10 @@ func (es ScopeProfilesSlice) MoveAndAppendTo(dest ScopeProfilesSlice) {
 func (es ScopeProfilesSlice) RemoveIf(f func(ScopeProfiles) bool) {
 	es.state.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.orig); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteScopeProfiles((*es.orig)[i], true)
 			(*es.orig)[i] = nil
 
@@ -143,6 +156,9 @@ func (es ScopeProfilesSlice) RemoveIf(f func(ScopeProfiles) bool) {
 		newLen++
 	}
 	*es.orig = (*es.orig)[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -152,6 +168,7 @@ func (es ScopeProfilesSlice) CopyTo(dest ScopeProfilesSlice) {
 		return
 	}
 	*dest.orig = internal.CopyScopeProfilesPtrSlice(*dest.orig, *es.orig)
+	dest.markModified()
 }
 
 // Sort sorts the ScopeProfiles elements within ScopeProfilesSlice given the
@@ -160,4 +177,5 @@ func (es ScopeProfilesSlice) CopyTo(dest ScopeProfilesSlice) {
 func (es ScopeProfilesSlice) Sort(less func(a, b ScopeProfiles) bool) {
 	es.state.AssertMutable()
 	sort.SliceStable(*es.orig, func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }

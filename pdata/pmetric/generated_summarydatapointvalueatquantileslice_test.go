@@ -18,7 +18,7 @@ import (
 func TestSummaryDataPointValueAtQuantileSlice(t *testing.T) {
 	es := NewSummaryDataPointValueAtQuantileSlice()
 	assert.Equal(t, 0, es.Len())
-	es = newSummaryDataPointValueAtQuantileSlice(&[]*internal.SummaryDataPointValueAtQuantile{}, internal.NewState())
+	es = newSummaryDataPointValueAtQuantileSlice(&[]*internal.SummaryDataPointValueAtQuantile{}, internal.NewState(), nil)
 	assert.Equal(t, 0, es.Len())
 
 	emptyVal := NewSummaryDataPointValueAtQuantile()
@@ -35,7 +35,7 @@ func TestSummaryDataPointValueAtQuantileSlice(t *testing.T) {
 func TestSummaryDataPointValueAtQuantileSliceReadOnly(t *testing.T) {
 	sharedState := internal.NewState()
 	sharedState.MarkReadOnly()
-	es := newSummaryDataPointValueAtQuantileSlice(&[]*internal.SummaryDataPointValueAtQuantile{}, sharedState)
+	es := newSummaryDataPointValueAtQuantileSlice(&[]*internal.SummaryDataPointValueAtQuantile{}, sharedState, nil)
 	assert.Equal(t, 0, es.Len())
 	assert.Panics(t, func() { es.AppendEmpty() })
 	assert.Panics(t, func() { es.EnsureCapacity(2) })

@@ -48,8 +48,7 @@ func (ms Logs) MoveTo(dest Logs) {
 // ResourceLogs returns the ResourceLogs associated with this Logs.
 func (ms Logs) ResourceLogs() ResourceLogsSlice {
 	ms.getOrig().EnsureDecoded()
-	ms.getOrig().MarkModified()
-	return newResourceLogsSlice(&ms.getOrig().ResourceLogs, ms.getState())
+	return newResourceLogsSlice(&ms.getOrig().ResourceLogs, ms.getState(), ms.getOrig().LazyMessage().MutationMarker())
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

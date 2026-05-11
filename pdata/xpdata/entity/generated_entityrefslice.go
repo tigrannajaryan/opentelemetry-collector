@@ -22,15 +22,21 @@ import (
 // Important: zero-initialized instance is not valid for use.
 type EntityRefSlice internal.EntityRefSliceWrapper
 
-func newEntityRefSlice(orig *[]*internal.EntityRef, state *internal.State) EntityRefSlice {
-	return EntityRefSlice(internal.NewEntityRefSliceWrapper(orig, state))
+func newEntityRefSlice(orig *[]*internal.EntityRef, state *internal.State, marker *internal.LazyMessage) EntityRefSlice {
+	return EntityRefSlice(internal.NewEntityRefSliceWrapperWithLazyMessage(orig, state, marker))
 }
 
 // NewEntityRefSlice creates a EntityRefSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewEntityRefSlice() EntityRefSlice {
 	orig := []*internal.EntityRef(nil)
-	return newEntityRefSlice(&orig, internal.NewState())
+	return newEntityRefSlice(&orig, internal.NewState(), nil)
+}
+
+func (es EntityRefSlice) markModified() {
+	if marker := internal.GetEntityRefSliceLazyMessage(internal.EntityRefSliceWrapper(es)); marker != nil {
+		marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -89,6 +95,7 @@ func (es EntityRefSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]*internal.EntityRef, len(*es.getOrig()), newCap)
 	copy(newOrig, *es.getOrig())
 	*es.getOrig() = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty EntityRef.
@@ -96,6 +103,7 @@ func (es EntityRefSlice) EnsureCapacity(newCap int) {
 func (es EntityRefSlice) AppendEmpty() EntityRef {
 	es.getState().AssertMutable()
 	*es.getOrig() = append(*es.getOrig(), internal.NewEntityRef())
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -115,6 +123,8 @@ func (es EntityRefSlice) MoveAndAppendTo(dest EntityRefSlice) {
 		*dest.getOrig() = append(*dest.getOrig(), *es.getOrig()...)
 	}
 	*es.getOrig() = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -122,8 +132,10 @@ func (es EntityRefSlice) MoveAndAppendTo(dest EntityRefSlice) {
 func (es EntityRefSlice) RemoveIf(f func(EntityRef) bool) {
 	es.getState().AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.getOrig()); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteEntityRef((*es.getOrig())[i], true)
 			(*es.getOrig())[i] = nil
 
@@ -140,6 +152,9 @@ func (es EntityRefSlice) RemoveIf(f func(EntityRef) bool) {
 		newLen++
 	}
 	*es.getOrig() = (*es.getOrig())[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -149,6 +164,7 @@ func (es EntityRefSlice) CopyTo(dest EntityRefSlice) {
 		return
 	}
 	*dest.getOrig() = internal.CopyEntityRefPtrSlice(*dest.getOrig(), *es.getOrig())
+	dest.markModified()
 }
 
 // Sort sorts the EntityRef elements within EntityRefSlice given the
@@ -157,6 +173,7 @@ func (es EntityRefSlice) CopyTo(dest EntityRefSlice) {
 func (es EntityRefSlice) Sort(less func(a, b EntityRef) bool) {
 	es.getState().AssertMutable()
 	sort.SliceStable(*es.getOrig(), func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }
 
 func (ms EntityRefSlice) getOrig() *[]*internal.EntityRef {

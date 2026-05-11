@@ -34,6 +34,12 @@ func NewInt32Slice() Int32Slice {
 	return Int32Slice(internal.NewInt32SliceWrapper(&orig, internal.NewState()))
 }
 
+func (ms Int32Slice) markModified() {
+	if marker := internal.GetInt32SliceLazyMessage(internal.Int32SliceWrapper(ms)); marker != nil {
+		marker.MarkModified()
+	}
+}
+
 // AsRaw returns a copy of the []int32 slice.
 func (ms Int32Slice) AsRaw() []int32 {
 	return copyInt32Slice(nil, *ms.getOrig())
@@ -43,6 +49,7 @@ func (ms Int32Slice) AsRaw() []int32 {
 func (ms Int32Slice) FromRaw(val []int32) {
 	ms.getState().AssertMutable()
 	*ms.getOrig() = copyInt32Slice(*ms.getOrig(), val)
+	ms.markModified()
 }
 
 // Len returns length of the []int32 slice value.
@@ -73,6 +80,7 @@ func (ms Int32Slice) All() iter.Seq2[int, int32] {
 func (ms Int32Slice) SetAt(i int, val int32) {
 	ms.getState().AssertMutable()
 	(*ms.getOrig())[i] = val
+	ms.markModified()
 }
 
 // EnsureCapacity ensures Int32Slice has at least the specified capacity.
@@ -91,6 +99,7 @@ func (ms Int32Slice) EnsureCapacity(newCap int) {
 	newOrig := make([]int32, len(*ms.getOrig()), newCap)
 	copy(newOrig, *ms.getOrig())
 	*ms.getOrig() = newOrig
+	ms.markModified()
 }
 
 // Append appends extra elements to Int32Slice.
@@ -98,6 +107,9 @@ func (ms Int32Slice) EnsureCapacity(newCap int) {
 func (ms Int32Slice) Append(elms ...int32) {
 	ms.getState().AssertMutable()
 	*ms.getOrig() = append(*ms.getOrig(), elms...)
+	if len(elms) > 0 {
+		ms.markModified()
+	}
 }
 
 // MoveTo moves all elements from the current slice overriding the destination and
@@ -111,6 +123,8 @@ func (ms Int32Slice) MoveTo(dest Int32Slice) {
 	}
 	*dest.getOrig() = *ms.getOrig()
 	*ms.getOrig() = nil
+	ms.markModified()
+	dest.markModified()
 }
 
 // MoveAndAppendTo moves all elements from the current slice and appends them to the dest.
@@ -125,6 +139,8 @@ func (ms Int32Slice) MoveAndAppendTo(dest Int32Slice) {
 		*dest.getOrig() = append(*dest.getOrig(), *ms.getOrig()...)
 	}
 	*ms.getOrig() = nil
+	ms.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -132,8 +148,10 @@ func (ms Int32Slice) MoveAndAppendTo(dest Int32Slice) {
 func (ms Int32Slice) RemoveIf(f func(int32) bool) {
 	ms.getState().AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*ms.getOrig()); i++ {
 		if f((*ms.getOrig())[i]) {
+			removed = true
 			continue
 		}
 		if newLen == i {
@@ -147,6 +165,9 @@ func (ms Int32Slice) RemoveIf(f func(int32) bool) {
 		newLen++
 	}
 	*ms.getOrig() = (*ms.getOrig())[:newLen]
+	if removed {
+		ms.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -156,6 +177,7 @@ func (ms Int32Slice) CopyTo(dest Int32Slice) {
 		return
 	}
 	*dest.getOrig() = copyInt32Slice(*dest.getOrig(), *ms.getOrig())
+	dest.markModified()
 }
 
 // Equal checks equality with another Int32Slice

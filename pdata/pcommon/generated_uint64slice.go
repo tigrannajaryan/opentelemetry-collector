@@ -34,6 +34,12 @@ func NewUInt64Slice() UInt64Slice {
 	return UInt64Slice(internal.NewUInt64SliceWrapper(&orig, internal.NewState()))
 }
 
+func (ms UInt64Slice) markModified() {
+	if marker := internal.GetUInt64SliceLazyMessage(internal.UInt64SliceWrapper(ms)); marker != nil {
+		marker.MarkModified()
+	}
+}
+
 // AsRaw returns a copy of the []uint64 slice.
 func (ms UInt64Slice) AsRaw() []uint64 {
 	return copyUint64Slice(nil, *ms.getOrig())
@@ -43,6 +49,7 @@ func (ms UInt64Slice) AsRaw() []uint64 {
 func (ms UInt64Slice) FromRaw(val []uint64) {
 	ms.getState().AssertMutable()
 	*ms.getOrig() = copyUint64Slice(*ms.getOrig(), val)
+	ms.markModified()
 }
 
 // Len returns length of the []uint64 slice value.
@@ -73,6 +80,7 @@ func (ms UInt64Slice) All() iter.Seq2[int, uint64] {
 func (ms UInt64Slice) SetAt(i int, val uint64) {
 	ms.getState().AssertMutable()
 	(*ms.getOrig())[i] = val
+	ms.markModified()
 }
 
 // EnsureCapacity ensures UInt64Slice has at least the specified capacity.
@@ -91,6 +99,7 @@ func (ms UInt64Slice) EnsureCapacity(newCap int) {
 	newOrig := make([]uint64, len(*ms.getOrig()), newCap)
 	copy(newOrig, *ms.getOrig())
 	*ms.getOrig() = newOrig
+	ms.markModified()
 }
 
 // Append appends extra elements to UInt64Slice.
@@ -98,6 +107,9 @@ func (ms UInt64Slice) EnsureCapacity(newCap int) {
 func (ms UInt64Slice) Append(elms ...uint64) {
 	ms.getState().AssertMutable()
 	*ms.getOrig() = append(*ms.getOrig(), elms...)
+	if len(elms) > 0 {
+		ms.markModified()
+	}
 }
 
 // MoveTo moves all elements from the current slice overriding the destination and
@@ -111,6 +123,8 @@ func (ms UInt64Slice) MoveTo(dest UInt64Slice) {
 	}
 	*dest.getOrig() = *ms.getOrig()
 	*ms.getOrig() = nil
+	ms.markModified()
+	dest.markModified()
 }
 
 // MoveAndAppendTo moves all elements from the current slice and appends them to the dest.
@@ -125,6 +139,8 @@ func (ms UInt64Slice) MoveAndAppendTo(dest UInt64Slice) {
 		*dest.getOrig() = append(*dest.getOrig(), *ms.getOrig()...)
 	}
 	*ms.getOrig() = nil
+	ms.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -132,8 +148,10 @@ func (ms UInt64Slice) MoveAndAppendTo(dest UInt64Slice) {
 func (ms UInt64Slice) RemoveIf(f func(uint64) bool) {
 	ms.getState().AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*ms.getOrig()); i++ {
 		if f((*ms.getOrig())[i]) {
+			removed = true
 			continue
 		}
 		if newLen == i {
@@ -147,6 +165,9 @@ func (ms UInt64Slice) RemoveIf(f func(uint64) bool) {
 		newLen++
 	}
 	*ms.getOrig() = (*ms.getOrig())[:newLen]
+	if removed {
+		ms.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -156,6 +177,7 @@ func (ms UInt64Slice) CopyTo(dest UInt64Slice) {
 		return
 	}
 	*dest.getOrig() = copyUint64Slice(*dest.getOrig(), *ms.getOrig())
+	dest.markModified()
 }
 
 // Equal checks equality with another UInt64Slice

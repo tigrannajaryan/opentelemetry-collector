@@ -16,12 +16,19 @@ func (ms Traces) IsReadOnly() bool {
 // SpanCount calculates the total number of spans.
 func (ms Traces) SpanCount() int {
 	spanCount := 0
-	rss := ms.ResourceSpans()
-	for i := 0; i < rss.Len(); i++ {
-		rs := rss.At(i)
-		ilss := rs.ScopeSpans()
-		for j := 0; j < ilss.Len(); j++ {
-			spanCount += ilss.At(j).Spans().Len()
+	orig := ms.getOrig()
+	orig.EnsureDecoded()
+	for _, rs := range orig.ResourceSpans {
+		if rs == nil {
+			continue
+		}
+		rs.EnsureDecoded()
+		for _, ss := range rs.ScopeSpans {
+			if ss == nil {
+				continue
+			}
+			ss.EnsureDecoded()
+			spanCount += len(ss.Spans)
 		}
 	}
 	return spanCount

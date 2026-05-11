@@ -21,19 +21,26 @@ import (
 // Must use NewSampleSlice function to create new instances.
 // Important: zero-initialized instance is not valid for use.
 type SampleSlice struct {
-	orig  *[]*internal.Sample
-	state *internal.State
+	orig   *[]*internal.Sample
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 
-func newSampleSlice(orig *[]*internal.Sample, state *internal.State) SampleSlice {
-	return SampleSlice{orig: orig, state: state}
+func newSampleSlice(orig *[]*internal.Sample, state *internal.State, marker *internal.LazyMessage) SampleSlice {
+	return SampleSlice{orig: orig, state: state, marker: marker}
 }
 
 // NewSampleSlice creates a SampleSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewSampleSlice() SampleSlice {
 	orig := []*internal.Sample(nil)
-	return newSampleSlice(&orig, internal.NewState())
+	return newSampleSlice(&orig, internal.NewState(), nil)
+}
+
+func (es SampleSlice) markModified() {
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -92,6 +99,7 @@ func (es SampleSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]*internal.Sample, len(*es.orig), newCap)
 	copy(newOrig, *es.orig)
 	*es.orig = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty Sample.
@@ -99,6 +107,7 @@ func (es SampleSlice) EnsureCapacity(newCap int) {
 func (es SampleSlice) AppendEmpty() Sample {
 	es.state.AssertMutable()
 	*es.orig = append(*es.orig, internal.NewSample())
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -118,6 +127,8 @@ func (es SampleSlice) MoveAndAppendTo(dest SampleSlice) {
 		*dest.orig = append(*dest.orig, *es.orig...)
 	}
 	*es.orig = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -125,8 +136,10 @@ func (es SampleSlice) MoveAndAppendTo(dest SampleSlice) {
 func (es SampleSlice) RemoveIf(f func(Sample) bool) {
 	es.state.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.orig); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteSample((*es.orig)[i], true)
 			(*es.orig)[i] = nil
 
@@ -143,6 +156,9 @@ func (es SampleSlice) RemoveIf(f func(Sample) bool) {
 		newLen++
 	}
 	*es.orig = (*es.orig)[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -152,6 +168,7 @@ func (es SampleSlice) CopyTo(dest SampleSlice) {
 		return
 	}
 	*dest.orig = internal.CopySamplePtrSlice(*dest.orig, *es.orig)
+	dest.markModified()
 }
 
 // Sort sorts the Sample elements within SampleSlice given the
@@ -160,4 +177,5 @@ func (es SampleSlice) CopyTo(dest SampleSlice) {
 func (es SampleSlice) Sort(less func(a, b Sample) bool) {
 	es.state.AssertMutable()
 	sort.SliceStable(*es.orig, func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }

@@ -20,19 +20,26 @@ import (
 // Must use NewExemplarSlice function to create new instances.
 // Important: zero-initialized instance is not valid for use.
 type ExemplarSlice struct {
-	orig  *[]internal.Exemplar
-	state *internal.State
+	orig   *[]internal.Exemplar
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 
-func newExemplarSlice(orig *[]internal.Exemplar, state *internal.State) ExemplarSlice {
-	return ExemplarSlice{orig: orig, state: state}
+func newExemplarSlice(orig *[]internal.Exemplar, state *internal.State, marker *internal.LazyMessage) ExemplarSlice {
+	return ExemplarSlice{orig: orig, state: state, marker: marker}
 }
 
 // NewExemplarSlice creates a ExemplarSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewExemplarSlice() ExemplarSlice {
 	orig := []internal.Exemplar(nil)
-	return newExemplarSlice(&orig, internal.NewState())
+	return newExemplarSlice(&orig, internal.NewState(), nil)
+}
+
+func (es ExemplarSlice) markModified() {
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -91,6 +98,7 @@ func (es ExemplarSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]internal.Exemplar, len(*es.orig), newCap)
 	copy(newOrig, *es.orig)
 	*es.orig = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty Exemplar.
@@ -98,6 +106,7 @@ func (es ExemplarSlice) EnsureCapacity(newCap int) {
 func (es ExemplarSlice) AppendEmpty() Exemplar {
 	es.state.AssertMutable()
 	*es.orig = append(*es.orig, internal.Exemplar{})
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -117,6 +126,8 @@ func (es ExemplarSlice) MoveAndAppendTo(dest ExemplarSlice) {
 		*dest.orig = append(*dest.orig, *es.orig...)
 	}
 	*es.orig = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -124,8 +135,10 @@ func (es ExemplarSlice) MoveAndAppendTo(dest ExemplarSlice) {
 func (es ExemplarSlice) RemoveIf(f func(Exemplar) bool) {
 	es.state.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.orig); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteExemplar(&(*es.orig)[i], false)
 			continue
 		}
@@ -139,6 +152,9 @@ func (es ExemplarSlice) RemoveIf(f func(Exemplar) bool) {
 		newLen++
 	}
 	*es.orig = (*es.orig)[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -148,4 +164,5 @@ func (es ExemplarSlice) CopyTo(dest ExemplarSlice) {
 		return
 	}
 	*dest.orig = internal.CopyExemplarSlice(*dest.orig, *es.orig)
+	dest.markModified()
 }

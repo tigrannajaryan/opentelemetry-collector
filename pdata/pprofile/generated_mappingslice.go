@@ -21,19 +21,26 @@ import (
 // Must use NewMappingSlice function to create new instances.
 // Important: zero-initialized instance is not valid for use.
 type MappingSlice struct {
-	orig  *[]*internal.Mapping
-	state *internal.State
+	orig   *[]*internal.Mapping
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 
-func newMappingSlice(orig *[]*internal.Mapping, state *internal.State) MappingSlice {
-	return MappingSlice{orig: orig, state: state}
+func newMappingSlice(orig *[]*internal.Mapping, state *internal.State, marker *internal.LazyMessage) MappingSlice {
+	return MappingSlice{orig: orig, state: state, marker: marker}
 }
 
 // NewMappingSlice creates a MappingSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewMappingSlice() MappingSlice {
 	orig := []*internal.Mapping(nil)
-	return newMappingSlice(&orig, internal.NewState())
+	return newMappingSlice(&orig, internal.NewState(), nil)
+}
+
+func (es MappingSlice) markModified() {
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -92,6 +99,7 @@ func (es MappingSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]*internal.Mapping, len(*es.orig), newCap)
 	copy(newOrig, *es.orig)
 	*es.orig = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty Mapping.
@@ -99,6 +107,7 @@ func (es MappingSlice) EnsureCapacity(newCap int) {
 func (es MappingSlice) AppendEmpty() Mapping {
 	es.state.AssertMutable()
 	*es.orig = append(*es.orig, internal.NewMapping())
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -118,6 +127,8 @@ func (es MappingSlice) MoveAndAppendTo(dest MappingSlice) {
 		*dest.orig = append(*dest.orig, *es.orig...)
 	}
 	*es.orig = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -125,8 +136,10 @@ func (es MappingSlice) MoveAndAppendTo(dest MappingSlice) {
 func (es MappingSlice) RemoveIf(f func(Mapping) bool) {
 	es.state.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.orig); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteMapping((*es.orig)[i], true)
 			(*es.orig)[i] = nil
 
@@ -143,6 +156,9 @@ func (es MappingSlice) RemoveIf(f func(Mapping) bool) {
 		newLen++
 	}
 	*es.orig = (*es.orig)[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -152,6 +168,7 @@ func (es MappingSlice) CopyTo(dest MappingSlice) {
 		return
 	}
 	*dest.orig = internal.CopyMappingPtrSlice(*dest.orig, *es.orig)
+	dest.markModified()
 }
 
 // Sort sorts the Mapping elements within MappingSlice given the
@@ -160,4 +177,5 @@ func (es MappingSlice) CopyTo(dest MappingSlice) {
 func (es MappingSlice) Sort(less func(a, b Mapping) bool) {
 	es.state.AssertMutable()
 	sort.SliceStable(*es.orig, func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }

@@ -57,8 +57,7 @@ func (ms ScopeMetrics) Scope() pcommon.InstrumentationScope {
 // Metrics returns the Metrics associated with this ScopeMetrics.
 func (ms ScopeMetrics) Metrics() MetricSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newMetricSlice(&ms.orig.Metrics, ms.state)
+	return newMetricSlice(&ms.orig.Metrics, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // SchemaUrl returns the schemaurl associated with this ScopeMetrics.

@@ -79,15 +79,13 @@ func (ms Location) SetAddress(v uint64) {
 // Lines returns the Lines associated with this Location.
 func (ms Location) Lines() LineSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newLineSlice(&ms.orig.Lines, ms.state)
+	return newLineSlice(&ms.orig.Lines, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // AttributeIndices returns the AttributeIndices associated with this Location.
 func (ms Location) AttributeIndices() pcommon.Int32Slice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.Int32Slice(internal.NewInt32SliceWrapper(&ms.orig.AttributeIndices, ms.state))
+	return pcommon.Int32Slice(internal.NewInt32SliceWrapperWithLazyMessage(&ms.orig.AttributeIndices, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

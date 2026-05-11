@@ -11,11 +11,10 @@ import (
 const sliceAccessorTemplate = `// {{ .fieldName }} returns the {{ .fieldName }} associated with this {{ .structName }}.
 func (ms {{ .structName }}) {{ .fieldName }}() {{ .packageName }}{{ .returnType }} {
 	ms.{{ .origAccessor }}.EnsureDecoded()
-	ms.{{ .origAccessor }}.MarkModified()
 	{{- if .elementHasWrapper }}
-	return {{ .packageName }}{{ .returnType }}(internal.New{{ .returnType }}Wrapper(&ms.{{ .origAccessor }}.{{ .originFieldName }}, ms.{{ .stateAccessor }}))
+	return {{ .packageName }}{{ .returnType }}(internal.New{{ .returnType }}WrapperWithLazyMessage(&ms.{{ .origAccessor }}.{{ .originFieldName }}, ms.{{ .stateAccessor }}, ms.{{ .origAccessor }}.LazyMessage().MutationMarker()))
 	{{- else }}
-	return new{{ .returnType }}(&ms.{{ .origAccessor }}.{{ .originFieldName }}, ms.{{ .stateAccessor }})
+	return new{{ .returnType }}(&ms.{{ .origAccessor }}.{{ .originFieldName }}, ms.{{ .stateAccessor }}, ms.{{ .origAccessor }}.LazyMessage().MutationMarker())
 	{{- end }}
 }`
 

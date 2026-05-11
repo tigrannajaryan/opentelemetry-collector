@@ -21,19 +21,26 @@ import (
 // Must use NewResourceMetricsSlice function to create new instances.
 // Important: zero-initialized instance is not valid for use.
 type ResourceMetricsSlice struct {
-	orig  *[]*internal.ResourceMetrics
-	state *internal.State
+	orig   *[]*internal.ResourceMetrics
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 
-func newResourceMetricsSlice(orig *[]*internal.ResourceMetrics, state *internal.State) ResourceMetricsSlice {
-	return ResourceMetricsSlice{orig: orig, state: state}
+func newResourceMetricsSlice(orig *[]*internal.ResourceMetrics, state *internal.State, marker *internal.LazyMessage) ResourceMetricsSlice {
+	return ResourceMetricsSlice{orig: orig, state: state, marker: marker}
 }
 
 // NewResourceMetricsSlice creates a ResourceMetricsSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewResourceMetricsSlice() ResourceMetricsSlice {
 	orig := []*internal.ResourceMetrics(nil)
-	return newResourceMetricsSlice(&orig, internal.NewState())
+	return newResourceMetricsSlice(&orig, internal.NewState(), nil)
+}
+
+func (es ResourceMetricsSlice) markModified() {
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -92,6 +99,7 @@ func (es ResourceMetricsSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]*internal.ResourceMetrics, len(*es.orig), newCap)
 	copy(newOrig, *es.orig)
 	*es.orig = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty ResourceMetrics.
@@ -99,6 +107,7 @@ func (es ResourceMetricsSlice) EnsureCapacity(newCap int) {
 func (es ResourceMetricsSlice) AppendEmpty() ResourceMetrics {
 	es.state.AssertMutable()
 	*es.orig = append(*es.orig, internal.NewResourceMetrics())
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -118,6 +127,8 @@ func (es ResourceMetricsSlice) MoveAndAppendTo(dest ResourceMetricsSlice) {
 		*dest.orig = append(*dest.orig, *es.orig...)
 	}
 	*es.orig = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -125,8 +136,10 @@ func (es ResourceMetricsSlice) MoveAndAppendTo(dest ResourceMetricsSlice) {
 func (es ResourceMetricsSlice) RemoveIf(f func(ResourceMetrics) bool) {
 	es.state.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.orig); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteResourceMetrics((*es.orig)[i], true)
 			(*es.orig)[i] = nil
 
@@ -143,6 +156,9 @@ func (es ResourceMetricsSlice) RemoveIf(f func(ResourceMetrics) bool) {
 		newLen++
 	}
 	*es.orig = (*es.orig)[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -152,6 +168,7 @@ func (es ResourceMetricsSlice) CopyTo(dest ResourceMetricsSlice) {
 		return
 	}
 	*dest.orig = internal.CopyResourceMetricsPtrSlice(*dest.orig, *es.orig)
+	dest.markModified()
 }
 
 // Sort sorts the ResourceMetrics elements within ResourceMetricsSlice given the
@@ -160,4 +177,5 @@ func (es ResourceMetricsSlice) CopyTo(dest ResourceMetricsSlice) {
 func (es ResourceMetricsSlice) Sort(less func(a, b ResourceMetrics) bool) {
 	es.state.AssertMutable()
 	sort.SliceStable(*es.orig, func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }

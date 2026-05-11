@@ -51,50 +51,43 @@ func (ms ProfilesDictionary) MoveTo(dest ProfilesDictionary) {
 // MappingTable returns the MappingTable associated with this ProfilesDictionary.
 func (ms ProfilesDictionary) MappingTable() MappingSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newMappingSlice(&ms.orig.MappingTable, ms.state)
+	return newMappingSlice(&ms.orig.MappingTable, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // LocationTable returns the LocationTable associated with this ProfilesDictionary.
 func (ms ProfilesDictionary) LocationTable() LocationSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newLocationSlice(&ms.orig.LocationTable, ms.state)
+	return newLocationSlice(&ms.orig.LocationTable, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // FunctionTable returns the FunctionTable associated with this ProfilesDictionary.
 func (ms ProfilesDictionary) FunctionTable() FunctionSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newFunctionSlice(&ms.orig.FunctionTable, ms.state)
+	return newFunctionSlice(&ms.orig.FunctionTable, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // LinkTable returns the LinkTable associated with this ProfilesDictionary.
 func (ms ProfilesDictionary) LinkTable() LinkSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newLinkSlice(&ms.orig.LinkTable, ms.state)
+	return newLinkSlice(&ms.orig.LinkTable, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // StringTable returns the StringTable associated with this ProfilesDictionary.
 func (ms ProfilesDictionary) StringTable() pcommon.StringSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.StringSlice(internal.NewStringSliceWrapper(&ms.orig.StringTable, ms.state))
+	return pcommon.StringSlice(internal.NewStringSliceWrapperWithLazyMessage(&ms.orig.StringTable, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // AttributeTable returns the AttributeTable associated with this ProfilesDictionary.
 func (ms ProfilesDictionary) AttributeTable() KeyValueAndUnitSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newKeyValueAndUnitSlice(&ms.orig.AttributeTable, ms.state)
+	return newKeyValueAndUnitSlice(&ms.orig.AttributeTable, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // StackTable returns the StackTable associated with this ProfilesDictionary.
 func (ms ProfilesDictionary) StackTable() StackSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newStackSlice(&ms.orig.StackTable, ms.state)
+	return newStackSlice(&ms.orig.StackTable, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

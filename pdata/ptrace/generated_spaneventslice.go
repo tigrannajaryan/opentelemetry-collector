@@ -21,19 +21,26 @@ import (
 // Must use NewSpanEventSlice function to create new instances.
 // Important: zero-initialized instance is not valid for use.
 type SpanEventSlice struct {
-	orig  *[]*internal.SpanEvent
-	state *internal.State
+	orig   *[]*internal.SpanEvent
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 
-func newSpanEventSlice(orig *[]*internal.SpanEvent, state *internal.State) SpanEventSlice {
-	return SpanEventSlice{orig: orig, state: state}
+func newSpanEventSlice(orig *[]*internal.SpanEvent, state *internal.State, marker *internal.LazyMessage) SpanEventSlice {
+	return SpanEventSlice{orig: orig, state: state, marker: marker}
 }
 
 // NewSpanEventSlice creates a SpanEventSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewSpanEventSlice() SpanEventSlice {
 	orig := []*internal.SpanEvent(nil)
-	return newSpanEventSlice(&orig, internal.NewState())
+	return newSpanEventSlice(&orig, internal.NewState(), nil)
+}
+
+func (es SpanEventSlice) markModified() {
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -92,6 +99,7 @@ func (es SpanEventSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]*internal.SpanEvent, len(*es.orig), newCap)
 	copy(newOrig, *es.orig)
 	*es.orig = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty SpanEvent.
@@ -99,6 +107,7 @@ func (es SpanEventSlice) EnsureCapacity(newCap int) {
 func (es SpanEventSlice) AppendEmpty() SpanEvent {
 	es.state.AssertMutable()
 	*es.orig = append(*es.orig, internal.NewSpanEvent())
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -118,6 +127,8 @@ func (es SpanEventSlice) MoveAndAppendTo(dest SpanEventSlice) {
 		*dest.orig = append(*dest.orig, *es.orig...)
 	}
 	*es.orig = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -125,8 +136,10 @@ func (es SpanEventSlice) MoveAndAppendTo(dest SpanEventSlice) {
 func (es SpanEventSlice) RemoveIf(f func(SpanEvent) bool) {
 	es.state.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.orig); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteSpanEvent((*es.orig)[i], true)
 			(*es.orig)[i] = nil
 
@@ -143,6 +156,9 @@ func (es SpanEventSlice) RemoveIf(f func(SpanEvent) bool) {
 		newLen++
 	}
 	*es.orig = (*es.orig)[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -152,6 +168,7 @@ func (es SpanEventSlice) CopyTo(dest SpanEventSlice) {
 		return
 	}
 	*dest.orig = internal.CopySpanEventPtrSlice(*dest.orig, *es.orig)
+	dest.markModified()
 }
 
 // Sort sorts the SpanEvent elements within SpanEventSlice given the
@@ -160,4 +177,5 @@ func (es SpanEventSlice) CopyTo(dest SpanEventSlice) {
 func (es SpanEventSlice) Sort(less func(a, b SpanEvent) bool) {
 	es.state.AssertMutable()
 	sort.SliceStable(*es.orig, func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }

@@ -7,8 +7,9 @@
 package internal
 
 type EntityRefSliceWrapper struct {
-	orig  *[]*EntityRef
-	state *State
+	orig   *[]*EntityRef
+	state  *State
+	marker *LazyMessage
 }
 
 func GetEntityRefSliceOrig(ms EntityRefSliceWrapper) *[]*EntityRef {
@@ -19,8 +20,16 @@ func GetEntityRefSliceState(ms EntityRefSliceWrapper) *State {
 	return ms.state
 }
 
+func GetEntityRefSliceLazyMessage(ms EntityRefSliceWrapper) *LazyMessage {
+	return ms.marker
+}
+
 func NewEntityRefSliceWrapper(orig *[]*EntityRef, state *State) EntityRefSliceWrapper {
-	return EntityRefSliceWrapper{orig: orig, state: state}
+	return NewEntityRefSliceWrapperWithLazyMessage(orig, state, nil)
+}
+
+func NewEntityRefSliceWrapperWithLazyMessage(orig *[]*EntityRef, state *State, marker *LazyMessage) EntityRefSliceWrapper {
+	return EntityRefSliceWrapper{orig: orig, state: state, marker: marker}
 }
 
 func GenTestEntityRefSliceWrapper() EntityRefSliceWrapper {

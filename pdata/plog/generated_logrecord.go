@@ -113,8 +113,7 @@ func (ms LogRecord) Body() pcommon.Value {
 // Attributes returns the Attributes associated with this LogRecord.
 func (ms LogRecord) Attributes() pcommon.Map {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.Map(internal.NewMapWrapper(&ms.orig.Attributes, ms.state))
+	return pcommon.Map(internal.NewMapWrapperWithLazyMessage(&ms.orig.Attributes, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // DroppedAttributesCount returns the droppedattributescount associated with this LogRecord.

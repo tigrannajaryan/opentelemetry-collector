@@ -23,16 +23,17 @@ import (
 type {{ .structName }} internal.{{ .structName }}Wrapper
 {{- else }}
 type {{ .structName }} struct {
-	orig *[]{{ if .elementNullable }}*{{ end }}internal.{{ .elementOriginName }}
-	state *internal.State
+	orig   *[]{{ if .elementNullable }}*{{ end }}internal.{{ .elementOriginName }}
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 {{- end }}
 
-func new{{ .structName }}(orig *[]{{ if .elementNullable }}*{{ end }}internal.{{ .elementOriginName }}, state *internal.State) {{ .structName }} {
+func new{{ .structName }}(orig *[]{{ if .elementNullable }}*{{ end }}internal.{{ .elementOriginName }}, state *internal.State, marker *internal.LazyMessage) {{ .structName }} {
 	{{- if .hasWrapper }}
-	return {{ .structName }}(internal.New{{ .structName }}Wrapper(orig, state))
+	return {{ .structName }}(internal.New{{ .structName }}WrapperWithLazyMessage(orig, state, marker))
 	{{- else }}
-	return {{ .structName }}{orig: orig, state: state}
+	return {{ .structName }}{orig: orig, state: state, marker: marker}
 	{{- end }}
 }
 
@@ -40,7 +41,19 @@ func new{{ .structName }}(orig *[]{{ if .elementNullable }}*{{ end }}internal.{{
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func New{{ .structName }}() {{ .structName }} {
 	orig := []{{ if .elementNullable }}*{{ end }}internal.{{ .elementOriginName }}(nil)
-	return new{{ .structName }}(&orig, internal.NewState())
+	return new{{ .structName }}(&orig, internal.NewState(), nil)
+}
+
+func (es {{ .structName }}) markModified() {
+	{{- if .hasWrapper }}
+	if marker := internal.Get{{ .structName }}LazyMessage(internal.{{ .structName }}Wrapper(es)); marker != nil {
+		marker.MarkModified()
+	}
+	{{- else }}
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
+	{{- end }}
 }
 
 // Len returns the number of elements in the slice.
@@ -97,6 +110,7 @@ func (es {{ .structName }}) EnsureCapacity(newCap int) {
 	newOrig := make([]{{ if .elementNullable }}*{{ end }}internal.{{ .elementOriginName }}, len(*es.{{ .origAccessor }}), newCap)
 	copy(newOrig, *es.{{ .origAccessor }})
 	*es.{{ .origAccessor }} = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty {{ .elementName }}.
@@ -104,6 +118,7 @@ func (es {{ .structName }}) EnsureCapacity(newCap int) {
 func (es {{ .structName }}) AppendEmpty() {{ .elementName }} {
 	es.{{ .stateAccessor }}.AssertMutable()
 	*es.{{ .origAccessor }} = append(*es.{{ .origAccessor }}, {{- if .elementNullable }}internal.New{{ .elementOriginName }}(){{ else }}internal.{{ .elementOriginName }}{}{{ end }})
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -123,6 +138,8 @@ func (es {{ .structName }}) MoveAndAppendTo(dest {{ .structName }}) {
 		*dest.{{ .origAccessor }} = append(*dest.{{ .origAccessor }}, *es.{{ .origAccessor }}...)
 	}
 	*es.{{ .origAccessor }} = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -130,8 +147,10 @@ func (es {{ .structName }}) MoveAndAppendTo(dest {{ .structName }}) {
 func (es {{ .structName }}) RemoveIf(f func({{ .elementName }}) bool) {
 	es.{{ .stateAccessor }}.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.{{ .origAccessor }}); i++ {
 		if f(es.At(i)) {
+			removed = true
 			{{ if .elementNullable -}}
 			internal.Delete{{ .elementOriginName }}((*es.{{ .origAccessor }})[i], true)
 			(*es.{{ .origAccessor }})[i] = nil
@@ -154,6 +173,9 @@ func (es {{ .structName }}) RemoveIf(f func({{ .elementName }}) bool) {
 		newLen++
 	}
 	*es.{{ .origAccessor }} = (*es.{{ .origAccessor }})[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 
@@ -164,6 +186,7 @@ func (es {{ .structName }}) CopyTo(dest {{ .structName }}) {
 		return
 	}
 	*dest.{{ .origAccessor }} = internal.Copy{{ .elementOriginName }}{{ if .elementNullable }}Ptr{{ end }}Slice(*dest.{{ .origAccessor }}, *es.{{ .origAccessor }})
+	dest.markModified()
 }
 
 {{ if .elementNullable -}}
@@ -173,6 +196,7 @@ func (es {{ .structName }}) CopyTo(dest {{ .structName }}) {
 func (es {{ .structName }}) Sort(less func(a, b {{ .elementName }}) bool) {
 	es.{{ .stateAccessor }}.AssertMutable()
 	sort.SliceStable(*es.{{ .origAccessor }}, func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }
 {{- end }}
 

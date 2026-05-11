@@ -7,8 +7,9 @@
 package internal
 
 type Int32SliceWrapper struct {
-	orig  *[]int32
-	state *State
+	orig   *[]int32
+	state  *State
+	marker *LazyMessage
 }
 
 func GetInt32SliceOrig(ms Int32SliceWrapper) *[]int32 {
@@ -19,8 +20,16 @@ func GetInt32SliceState(ms Int32SliceWrapper) *State {
 	return ms.state
 }
 
+func GetInt32SliceLazyMessage(ms Int32SliceWrapper) *LazyMessage {
+	return ms.marker
+}
+
 func NewInt32SliceWrapper(orig *[]int32, state *State) Int32SliceWrapper {
-	return Int32SliceWrapper{orig: orig, state: state}
+	return NewInt32SliceWrapperWithLazyMessage(orig, state, nil)
+}
+
+func NewInt32SliceWrapperWithLazyMessage(orig *[]int32, state *State, marker *LazyMessage) Int32SliceWrapper {
+	return Int32SliceWrapper{orig: orig, state: state, marker: marker}
 }
 
 func GenTestInt32SliceWrapper() Int32SliceWrapper {

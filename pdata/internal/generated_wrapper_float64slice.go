@@ -7,8 +7,9 @@
 package internal
 
 type Float64SliceWrapper struct {
-	orig  *[]float64
-	state *State
+	orig   *[]float64
+	state  *State
+	marker *LazyMessage
 }
 
 func GetFloat64SliceOrig(ms Float64SliceWrapper) *[]float64 {
@@ -19,8 +20,16 @@ func GetFloat64SliceState(ms Float64SliceWrapper) *State {
 	return ms.state
 }
 
+func GetFloat64SliceLazyMessage(ms Float64SliceWrapper) *LazyMessage {
+	return ms.marker
+}
+
 func NewFloat64SliceWrapper(orig *[]float64, state *State) Float64SliceWrapper {
-	return Float64SliceWrapper{orig: orig, state: state}
+	return NewFloat64SliceWrapperWithLazyMessage(orig, state, nil)
+}
+
+func NewFloat64SliceWrapperWithLazyMessage(orig *[]float64, state *State, marker *LazyMessage) Float64SliceWrapper {
+	return Float64SliceWrapper{orig: orig, state: state, marker: marker}
 }
 
 func GenTestFloat64SliceWrapper() Float64SliceWrapper {

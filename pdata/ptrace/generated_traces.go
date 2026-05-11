@@ -48,8 +48,7 @@ func (ms Traces) MoveTo(dest Traces) {
 // ResourceSpans returns the ResourceSpans associated with this Traces.
 func (ms Traces) ResourceSpans() ResourceSpansSlice {
 	ms.getOrig().EnsureDecoded()
-	ms.getOrig().MarkModified()
-	return newResourceSpansSlice(&ms.getOrig().ResourceSpans, ms.getState())
+	return newResourceSpansSlice(&ms.getOrig().ResourceSpans, ms.getState(), ms.getOrig().LazyMessage().MutationMarker())
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

@@ -18,7 +18,7 @@ import (
 func TestScopeSpansSlice(t *testing.T) {
 	es := NewScopeSpansSlice()
 	assert.Equal(t, 0, es.Len())
-	es = newScopeSpansSlice(&[]*internal.ScopeSpans{}, internal.NewState())
+	es = newScopeSpansSlice(&[]*internal.ScopeSpans{}, internal.NewState(), nil)
 	assert.Equal(t, 0, es.Len())
 
 	emptyVal := NewScopeSpans()
@@ -35,7 +35,7 @@ func TestScopeSpansSlice(t *testing.T) {
 func TestScopeSpansSliceReadOnly(t *testing.T) {
 	sharedState := internal.NewState()
 	sharedState.MarkReadOnly()
-	es := newScopeSpansSlice(&[]*internal.ScopeSpans{}, sharedState)
+	es := newScopeSpansSlice(&[]*internal.ScopeSpans{}, sharedState, nil)
 	assert.Equal(t, 0, es.Len())
 	assert.Panics(t, func() { es.AppendEmpty() })
 	assert.Panics(t, func() { es.EnsureCapacity(2) })

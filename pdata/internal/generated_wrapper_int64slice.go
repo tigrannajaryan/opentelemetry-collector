@@ -7,8 +7,9 @@
 package internal
 
 type Int64SliceWrapper struct {
-	orig  *[]int64
-	state *State
+	orig   *[]int64
+	state  *State
+	marker *LazyMessage
 }
 
 func GetInt64SliceOrig(ms Int64SliceWrapper) *[]int64 {
@@ -19,8 +20,16 @@ func GetInt64SliceState(ms Int64SliceWrapper) *State {
 	return ms.state
 }
 
+func GetInt64SliceLazyMessage(ms Int64SliceWrapper) *LazyMessage {
+	return ms.marker
+}
+
 func NewInt64SliceWrapper(orig *[]int64, state *State) Int64SliceWrapper {
-	return Int64SliceWrapper{orig: orig, state: state}
+	return NewInt64SliceWrapperWithLazyMessage(orig, state, nil)
+}
+
+func NewInt64SliceWrapperWithLazyMessage(orig *[]int64, state *State, marker *LazyMessage) Int64SliceWrapper {
+	return Int64SliceWrapper{orig: orig, state: state, marker: marker}
 }
 
 func GenTestInt64SliceWrapper() Int64SliceWrapper {

@@ -7,8 +7,9 @@
 package internal
 
 type SliceWrapper struct {
-	orig  *[]AnyValue
-	state *State
+	orig   *[]AnyValue
+	state  *State
+	marker *LazyMessage
 }
 
 func GetSliceOrig(ms SliceWrapper) *[]AnyValue {
@@ -19,8 +20,16 @@ func GetSliceState(ms SliceWrapper) *State {
 	return ms.state
 }
 
+func GetSliceLazyMessage(ms SliceWrapper) *LazyMessage {
+	return ms.marker
+}
+
 func NewSliceWrapper(orig *[]AnyValue, state *State) SliceWrapper {
-	return SliceWrapper{orig: orig, state: state}
+	return NewSliceWrapperWithLazyMessage(orig, state, nil)
+}
+
+func NewSliceWrapperWithLazyMessage(orig *[]AnyValue, state *State, marker *LazyMessage) SliceWrapper {
+	return SliceWrapper{orig: orig, state: state, marker: marker}
 }
 
 func GenTestSliceWrapper() SliceWrapper {

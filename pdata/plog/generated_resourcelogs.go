@@ -57,8 +57,7 @@ func (ms ResourceLogs) Resource() pcommon.Resource {
 // ScopeLogs returns the ScopeLogs associated with this ResourceLogs.
 func (ms ResourceLogs) ScopeLogs() ScopeLogsSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newScopeLogsSlice(&ms.orig.ScopeLogs, ms.state)
+	return newScopeLogsSlice(&ms.orig.ScopeLogs, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // SchemaUrl returns the schemaurl associated with this ResourceLogs.

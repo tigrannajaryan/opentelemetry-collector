@@ -18,7 +18,7 @@ import (
 func TestSampleSlice(t *testing.T) {
 	es := NewSampleSlice()
 	assert.Equal(t, 0, es.Len())
-	es = newSampleSlice(&[]*internal.Sample{}, internal.NewState())
+	es = newSampleSlice(&[]*internal.Sample{}, internal.NewState(), nil)
 	assert.Equal(t, 0, es.Len())
 
 	emptyVal := NewSample()
@@ -35,7 +35,7 @@ func TestSampleSlice(t *testing.T) {
 func TestSampleSliceReadOnly(t *testing.T) {
 	sharedState := internal.NewState()
 	sharedState.MarkReadOnly()
-	es := newSampleSlice(&[]*internal.Sample{}, sharedState)
+	es := newSampleSlice(&[]*internal.Sample{}, sharedState, nil)
 	assert.Equal(t, 0, es.Len())
 	assert.Panics(t, func() { es.AppendEmpty() })
 	assert.Panics(t, func() { es.EnsureCapacity(2) })

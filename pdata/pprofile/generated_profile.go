@@ -57,8 +57,7 @@ func (ms Profile) SampleType() ValueType {
 // Samples returns the Samples associated with this Profile.
 func (ms Profile) Samples() SampleSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newSampleSlice(&ms.orig.Samples, ms.state)
+	return newSampleSlice(&ms.orig.Samples, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // Time returns the time associated with this Profile.
@@ -154,15 +153,13 @@ func (ms Profile) SetOriginalPayloadFormat(v string) {
 // OriginalPayload returns the OriginalPayload associated with this Profile.
 func (ms Profile) OriginalPayload() pcommon.ByteSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.ByteSlice(internal.NewByteSliceWrapper(&ms.orig.OriginalPayload, ms.state))
+	return pcommon.ByteSlice(internal.NewByteSliceWrapperWithLazyMessage(&ms.orig.OriginalPayload, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // AttributeIndices returns the AttributeIndices associated with this Profile.
 func (ms Profile) AttributeIndices() pcommon.Int32Slice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.Int32Slice(internal.NewInt32SliceWrapper(&ms.orig.AttributeIndices, ms.state))
+	return pcommon.Int32Slice(internal.NewInt32SliceWrapperWithLazyMessage(&ms.orig.AttributeIndices, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

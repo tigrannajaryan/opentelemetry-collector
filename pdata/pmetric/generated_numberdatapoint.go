@@ -52,8 +52,7 @@ func (ms NumberDataPoint) MoveTo(dest NumberDataPoint) {
 // Attributes returns the Attributes associated with this NumberDataPoint.
 func (ms NumberDataPoint) Attributes() pcommon.Map {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.Map(internal.NewMapWrapper(&ms.orig.Attributes, ms.state))
+	return pcommon.Map(internal.NewMapWrapperWithLazyMessage(&ms.orig.Attributes, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // StartTimestamp returns the starttimestamp associated with this NumberDataPoint.
@@ -140,8 +139,7 @@ func (ms NumberDataPoint) SetIntValue(v int64) {
 // Exemplars returns the Exemplars associated with this NumberDataPoint.
 func (ms NumberDataPoint) Exemplars() ExemplarSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newExemplarSlice(&ms.orig.Exemplars, ms.state)
+	return newExemplarSlice(&ms.orig.Exemplars, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // Flags returns the flags associated with this NumberDataPoint.

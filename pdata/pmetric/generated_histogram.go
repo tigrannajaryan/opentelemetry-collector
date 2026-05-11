@@ -50,8 +50,7 @@ func (ms Histogram) MoveTo(dest Histogram) {
 // DataPoints returns the DataPoints associated with this Histogram.
 func (ms Histogram) DataPoints() HistogramDataPointSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newHistogramDataPointSlice(&ms.orig.DataPoints, ms.state)
+	return newHistogramDataPointSlice(&ms.orig.DataPoints, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // AggregationTemporality returns the aggregationtemporality associated with this Histogram.

@@ -57,8 +57,7 @@ func (ms ScopeLogs) Scope() pcommon.InstrumentationScope {
 // LogRecords returns the LogRecords associated with this ScopeLogs.
 func (ms ScopeLogs) LogRecords() LogRecordSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newLogRecordSlice(&ms.orig.LogRecords, ms.state)
+	return newLogRecordSlice(&ms.orig.LogRecords, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // SchemaUrl returns the schemaurl associated with this ScopeLogs.

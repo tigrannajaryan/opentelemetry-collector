@@ -7,8 +7,9 @@
 package internal
 
 type StringSliceWrapper struct {
-	orig  *[]string
-	state *State
+	orig   *[]string
+	state  *State
+	marker *LazyMessage
 }
 
 func GetStringSliceOrig(ms StringSliceWrapper) *[]string {
@@ -19,8 +20,16 @@ func GetStringSliceState(ms StringSliceWrapper) *State {
 	return ms.state
 }
 
+func GetStringSliceLazyMessage(ms StringSliceWrapper) *LazyMessage {
+	return ms.marker
+}
+
 func NewStringSliceWrapper(orig *[]string, state *State) StringSliceWrapper {
-	return StringSliceWrapper{orig: orig, state: state}
+	return NewStringSliceWrapperWithLazyMessage(orig, state, nil)
+}
+
+func NewStringSliceWrapperWithLazyMessage(orig *[]string, state *State, marker *LazyMessage) StringSliceWrapper {
+	return StringSliceWrapper{orig: orig, state: state, marker: marker}
 }
 
 func GenTestStringSliceWrapper() StringSliceWrapper {

@@ -18,7 +18,7 @@ import (
 func TestLocationSlice(t *testing.T) {
 	es := NewLocationSlice()
 	assert.Equal(t, 0, es.Len())
-	es = newLocationSlice(&[]*internal.Location{}, internal.NewState())
+	es = newLocationSlice(&[]*internal.Location{}, internal.NewState(), nil)
 	assert.Equal(t, 0, es.Len())
 
 	emptyVal := NewLocation()
@@ -35,7 +35,7 @@ func TestLocationSlice(t *testing.T) {
 func TestLocationSliceReadOnly(t *testing.T) {
 	sharedState := internal.NewState()
 	sharedState.MarkReadOnly()
-	es := newLocationSlice(&[]*internal.Location{}, sharedState)
+	es := newLocationSlice(&[]*internal.Location{}, sharedState, nil)
 	assert.Equal(t, 0, es.Len())
 	assert.Panics(t, func() { es.AppendEmpty() })
 	assert.Panics(t, func() { es.EnsureCapacity(2) })

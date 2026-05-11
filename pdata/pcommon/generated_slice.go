@@ -21,15 +21,21 @@ import (
 // Important: zero-initialized instance is not valid for use.
 type Slice internal.SliceWrapper
 
-func newSlice(orig *[]internal.AnyValue, state *internal.State) Slice {
-	return Slice(internal.NewSliceWrapper(orig, state))
+func newSlice(orig *[]internal.AnyValue, state *internal.State, marker *internal.LazyMessage) Slice {
+	return Slice(internal.NewSliceWrapperWithLazyMessage(orig, state, marker))
 }
 
 // NewSlice creates a SliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewSlice() Slice {
 	orig := []internal.AnyValue(nil)
-	return newSlice(&orig, internal.NewState())
+	return newSlice(&orig, internal.NewState(), nil)
+}
+
+func (es Slice) markModified() {
+	if marker := internal.GetSliceLazyMessage(internal.SliceWrapper(es)); marker != nil {
+		marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -88,6 +94,7 @@ func (es Slice) EnsureCapacity(newCap int) {
 	newOrig := make([]internal.AnyValue, len(*es.getOrig()), newCap)
 	copy(newOrig, *es.getOrig())
 	*es.getOrig() = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty Value.
@@ -95,6 +102,7 @@ func (es Slice) EnsureCapacity(newCap int) {
 func (es Slice) AppendEmpty() Value {
 	es.getState().AssertMutable()
 	*es.getOrig() = append(*es.getOrig(), internal.AnyValue{})
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -114,6 +122,8 @@ func (es Slice) MoveAndAppendTo(dest Slice) {
 		*dest.getOrig() = append(*dest.getOrig(), *es.getOrig()...)
 	}
 	*es.getOrig() = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -121,8 +131,10 @@ func (es Slice) MoveAndAppendTo(dest Slice) {
 func (es Slice) RemoveIf(f func(Value) bool) {
 	es.getState().AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.getOrig()); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteAnyValue(&(*es.getOrig())[i], false)
 			continue
 		}
@@ -136,6 +148,9 @@ func (es Slice) RemoveIf(f func(Value) bool) {
 		newLen++
 	}
 	*es.getOrig() = (*es.getOrig())[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -145,6 +160,7 @@ func (es Slice) CopyTo(dest Slice) {
 		return
 	}
 	*dest.getOrig() = internal.CopyAnyValueSlice(*dest.getOrig(), *es.getOrig())
+	dest.markModified()
 }
 
 func (ms Slice) getOrig() *[]internal.AnyValue {

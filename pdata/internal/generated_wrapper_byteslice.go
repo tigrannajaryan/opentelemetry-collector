@@ -7,8 +7,9 @@
 package internal
 
 type ByteSliceWrapper struct {
-	orig  *[]byte
-	state *State
+	orig   *[]byte
+	state  *State
+	marker *LazyMessage
 }
 
 func GetByteSliceOrig(ms ByteSliceWrapper) *[]byte {
@@ -19,8 +20,16 @@ func GetByteSliceState(ms ByteSliceWrapper) *State {
 	return ms.state
 }
 
+func GetByteSliceLazyMessage(ms ByteSliceWrapper) *LazyMessage {
+	return ms.marker
+}
+
 func NewByteSliceWrapper(orig *[]byte, state *State) ByteSliceWrapper {
-	return ByteSliceWrapper{orig: orig, state: state}
+	return NewByteSliceWrapperWithLazyMessage(orig, state, nil)
+}
+
+func NewByteSliceWrapperWithLazyMessage(orig *[]byte, state *State, marker *LazyMessage) ByteSliceWrapper {
+	return ByteSliceWrapper{orig: orig, state: state, marker: marker}
 }
 
 func GenTestByteSliceWrapper() ByteSliceWrapper {

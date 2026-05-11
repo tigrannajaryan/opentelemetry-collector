@@ -259,8 +259,7 @@ func (v Value) Map() Map {
 		return Map{}
 	}
 	kvlist.EnsureDecoded()
-	kvlist.MarkModified()
-	return newMap(&kvlist.Values, internal.GetValueState(internal.ValueWrapper(v)))
+	return newMapWithLazyMessage(&kvlist.Values, internal.GetValueState(internal.ValueWrapper(v)), kvlist.LazyMessage().MutationMarker())
 }
 
 // Slice returns the slice value associated with this Value.
@@ -273,8 +272,7 @@ func (v Value) Slice() Slice {
 		return Slice{}
 	}
 	arr.EnsureDecoded()
-	arr.MarkModified()
-	return newSlice(&arr.Values, internal.GetValueState(internal.ValueWrapper(v)))
+	return newSlice(&arr.Values, internal.GetValueState(internal.ValueWrapper(v)), arr.LazyMessage().MutationMarker())
 }
 
 // Bytes returns the ByteSlice value associated with this Value.
@@ -286,8 +284,7 @@ func (v Value) Bytes() ByteSlice {
 	if !ok {
 		return ByteSlice{}
 	}
-	v.getOrig().MarkModified()
-	return ByteSlice(internal.NewByteSliceWrapper(&bv.BytesValue, internal.GetValueState(internal.ValueWrapper(v))))
+	return ByteSlice(internal.NewByteSliceWrapperWithLazyMessage(&bv.BytesValue, internal.GetValueState(internal.ValueWrapper(v)), v.getOrig().LazyMessage().MutationMarker()))
 }
 
 // SetStr replaces the string value associated with this Value,
@@ -358,7 +355,7 @@ func (v Value) SetEmptyBytes() ByteSlice {
 	bv := internal.NewAnyValueBytesValue()
 	v.getOrig().Value = bv
 	v.getOrig().MarkModified()
-	return ByteSlice(internal.NewByteSliceWrapper(&bv.BytesValue, v.getState()))
+	return ByteSlice(internal.NewByteSliceWrapperWithLazyMessage(&bv.BytesValue, v.getState(), v.getOrig().LazyMessage().MutationMarker()))
 }
 
 // SetEmptyMap sets value to an empty map and returns it.
@@ -372,7 +369,7 @@ func (v Value) SetEmptyMap() Map {
 	ov.KvlistValue = internal.NewKeyValueList()
 	v.getOrig().Value = ov
 	v.getOrig().MarkModified()
-	return newMap(&ov.KvlistValue.Values, v.getState())
+	return newMapWithLazyMessage(&ov.KvlistValue.Values, v.getState(), v.getOrig().LazyMessage().MutationMarker())
 }
 
 // SetEmptySlice sets value to an empty slice and returns it.
@@ -386,7 +383,7 @@ func (v Value) SetEmptySlice() Slice {
 	ov.ArrayValue = internal.NewArrayValue()
 	v.getOrig().Value = ov
 	v.getOrig().MarkModified()
-	return newSlice(&ov.ArrayValue.Values, v.getState())
+	return newSlice(&ov.ArrayValue.Values, v.getState(), v.getOrig().LazyMessage().MutationMarker())
 }
 
 // MoveTo moves the Value from current overriding the destination and

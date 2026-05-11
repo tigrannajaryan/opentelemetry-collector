@@ -18,7 +18,7 @@ import (
 func TestScopeProfilesSlice(t *testing.T) {
 	es := NewScopeProfilesSlice()
 	assert.Equal(t, 0, es.Len())
-	es = newScopeProfilesSlice(&[]*internal.ScopeProfiles{}, internal.NewState())
+	es = newScopeProfilesSlice(&[]*internal.ScopeProfiles{}, internal.NewState(), nil)
 	assert.Equal(t, 0, es.Len())
 
 	emptyVal := NewScopeProfiles()
@@ -35,7 +35,7 @@ func TestScopeProfilesSlice(t *testing.T) {
 func TestScopeProfilesSliceReadOnly(t *testing.T) {
 	sharedState := internal.NewState()
 	sharedState.MarkReadOnly()
-	es := newScopeProfilesSlice(&[]*internal.ScopeProfiles{}, sharedState)
+	es := newScopeProfilesSlice(&[]*internal.ScopeProfiles{}, sharedState, nil)
 	assert.Equal(t, 0, es.Len())
 	assert.Panics(t, func() { es.AppendEmpty() })
 	assert.Panics(t, func() { es.EnsureCapacity(2) })

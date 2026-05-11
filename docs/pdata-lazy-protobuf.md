@@ -107,10 +107,20 @@ Generated setters and handwritten mutators call `MarkModified`; `MarkModified`
 clears wire bytes on the current message and every ancestor through the stored
 parent pointers.
 
-Repeated slice access is conservative. The public slice getter marks the owning
-message modified because the slice API can mutate elements after the getter
-returns and does not provide a mutation callback back into the generated proto
-message.
+Repeated slice and map access is also tracked without global state. Public
+collection getters do not mark the owning message modified. Instead, generated
+slice wrappers and the handwritten `pcommon.Map` wrapper carry an optional lazy
+mutation marker for the owning message. Mutating collection methods such as
+`AppendEmpty`, `SetAt`, `RemoveIf`, `CopyTo`, `PutStr`, and `Remove` call that
+marker only when they actually change the collection. Read-only methods such as
+`Len`, `At`, `All`, `Range`, and `Get` leave the retained wire bytes reusable.
+
+The marker is installed from `LazyMessage().MutationMarker()` in generated
+collection getters. Freshly constructed in-memory messages return nil so their
+wrappers keep ordinary equality semantics and avoid unnecessary modification
+checks. Lazily decoded messages, or decoded children that still have a lazy
+ancestor, return their `LazyMessage` so collection mutations can invalidate all
+affected ancestor bytes.
 
 ## Eager materialization boundaries
 

@@ -21,19 +21,26 @@ import (
 // Must use NewFunctionSlice function to create new instances.
 // Important: zero-initialized instance is not valid for use.
 type FunctionSlice struct {
-	orig  *[]*internal.Function
-	state *internal.State
+	orig   *[]*internal.Function
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 
-func newFunctionSlice(orig *[]*internal.Function, state *internal.State) FunctionSlice {
-	return FunctionSlice{orig: orig, state: state}
+func newFunctionSlice(orig *[]*internal.Function, state *internal.State, marker *internal.LazyMessage) FunctionSlice {
+	return FunctionSlice{orig: orig, state: state, marker: marker}
 }
 
 // NewFunctionSlice creates a FunctionSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewFunctionSlice() FunctionSlice {
 	orig := []*internal.Function(nil)
-	return newFunctionSlice(&orig, internal.NewState())
+	return newFunctionSlice(&orig, internal.NewState(), nil)
+}
+
+func (es FunctionSlice) markModified() {
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -92,6 +99,7 @@ func (es FunctionSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]*internal.Function, len(*es.orig), newCap)
 	copy(newOrig, *es.orig)
 	*es.orig = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty Function.
@@ -99,6 +107,7 @@ func (es FunctionSlice) EnsureCapacity(newCap int) {
 func (es FunctionSlice) AppendEmpty() Function {
 	es.state.AssertMutable()
 	*es.orig = append(*es.orig, internal.NewFunction())
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -118,6 +127,8 @@ func (es FunctionSlice) MoveAndAppendTo(dest FunctionSlice) {
 		*dest.orig = append(*dest.orig, *es.orig...)
 	}
 	*es.orig = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -125,8 +136,10 @@ func (es FunctionSlice) MoveAndAppendTo(dest FunctionSlice) {
 func (es FunctionSlice) RemoveIf(f func(Function) bool) {
 	es.state.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.orig); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteFunction((*es.orig)[i], true)
 			(*es.orig)[i] = nil
 
@@ -143,6 +156,9 @@ func (es FunctionSlice) RemoveIf(f func(Function) bool) {
 		newLen++
 	}
 	*es.orig = (*es.orig)[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -152,6 +168,7 @@ func (es FunctionSlice) CopyTo(dest FunctionSlice) {
 		return
 	}
 	*dest.orig = internal.CopyFunctionPtrSlice(*dest.orig, *es.orig)
+	dest.markModified()
 }
 
 // Sort sorts the Function elements within FunctionSlice given the
@@ -160,4 +177,5 @@ func (es FunctionSlice) CopyTo(dest FunctionSlice) {
 func (es FunctionSlice) Sort(less func(a, b Function) bool) {
 	es.state.AssertMutable()
 	sort.SliceStable(*es.orig, func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }

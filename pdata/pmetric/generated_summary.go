@@ -50,8 +50,7 @@ func (ms Summary) MoveTo(dest Summary) {
 // DataPoints returns the DataPoints associated with this Summary.
 func (ms Summary) DataPoints() SummaryDataPointSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newSummaryDataPointSlice(&ms.orig.DataPoints, ms.state)
+	return newSummaryDataPointSlice(&ms.orig.DataPoints, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

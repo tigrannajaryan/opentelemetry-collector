@@ -18,7 +18,7 @@ import (
 func TestLineSlice(t *testing.T) {
 	es := NewLineSlice()
 	assert.Equal(t, 0, es.Len())
-	es = newLineSlice(&[]*internal.Line{}, internal.NewState())
+	es = newLineSlice(&[]*internal.Line{}, internal.NewState(), nil)
 	assert.Equal(t, 0, es.Len())
 
 	emptyVal := NewLine()
@@ -35,7 +35,7 @@ func TestLineSlice(t *testing.T) {
 func TestLineSliceReadOnly(t *testing.T) {
 	sharedState := internal.NewState()
 	sharedState.MarkReadOnly()
-	es := newLineSlice(&[]*internal.Line{}, sharedState)
+	es := newLineSlice(&[]*internal.Line{}, sharedState, nil)
 	assert.Equal(t, 0, es.Len())
 	assert.Panics(t, func() { es.AppendEmpty() })
 	assert.Panics(t, func() { es.EnsureCapacity(2) })

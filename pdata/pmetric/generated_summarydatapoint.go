@@ -51,8 +51,7 @@ func (ms SummaryDataPoint) MoveTo(dest SummaryDataPoint) {
 // Attributes returns the Attributes associated with this SummaryDataPoint.
 func (ms SummaryDataPoint) Attributes() pcommon.Map {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.Map(internal.NewMapWrapper(&ms.orig.Attributes, ms.state))
+	return pcommon.Map(internal.NewMapWrapperWithLazyMessage(&ms.orig.Attributes, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // StartTimestamp returns the starttimestamp associated with this SummaryDataPoint.
@@ -114,8 +113,7 @@ func (ms SummaryDataPoint) SetSum(v float64) {
 // QuantileValues returns the QuantileValues associated with this SummaryDataPoint.
 func (ms SummaryDataPoint) QuantileValues() SummaryDataPointValueAtQuantileSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newSummaryDataPointValueAtQuantileSlice(&ms.orig.QuantileValues, ms.state)
+	return newSummaryDataPointValueAtQuantileSlice(&ms.orig.QuantileValues, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // Flags returns the flags associated with this SummaryDataPoint.

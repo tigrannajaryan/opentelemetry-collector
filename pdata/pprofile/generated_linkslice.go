@@ -21,19 +21,26 @@ import (
 // Must use NewLinkSlice function to create new instances.
 // Important: zero-initialized instance is not valid for use.
 type LinkSlice struct {
-	orig  *[]*internal.Link
-	state *internal.State
+	orig   *[]*internal.Link
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 
-func newLinkSlice(orig *[]*internal.Link, state *internal.State) LinkSlice {
-	return LinkSlice{orig: orig, state: state}
+func newLinkSlice(orig *[]*internal.Link, state *internal.State, marker *internal.LazyMessage) LinkSlice {
+	return LinkSlice{orig: orig, state: state, marker: marker}
 }
 
 // NewLinkSlice creates a LinkSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewLinkSlice() LinkSlice {
 	orig := []*internal.Link(nil)
-	return newLinkSlice(&orig, internal.NewState())
+	return newLinkSlice(&orig, internal.NewState(), nil)
+}
+
+func (es LinkSlice) markModified() {
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -92,6 +99,7 @@ func (es LinkSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]*internal.Link, len(*es.orig), newCap)
 	copy(newOrig, *es.orig)
 	*es.orig = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty Link.
@@ -99,6 +107,7 @@ func (es LinkSlice) EnsureCapacity(newCap int) {
 func (es LinkSlice) AppendEmpty() Link {
 	es.state.AssertMutable()
 	*es.orig = append(*es.orig, internal.NewLink())
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -118,6 +127,8 @@ func (es LinkSlice) MoveAndAppendTo(dest LinkSlice) {
 		*dest.orig = append(*dest.orig, *es.orig...)
 	}
 	*es.orig = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -125,8 +136,10 @@ func (es LinkSlice) MoveAndAppendTo(dest LinkSlice) {
 func (es LinkSlice) RemoveIf(f func(Link) bool) {
 	es.state.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.orig); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteLink((*es.orig)[i], true)
 			(*es.orig)[i] = nil
 
@@ -143,6 +156,9 @@ func (es LinkSlice) RemoveIf(f func(Link) bool) {
 		newLen++
 	}
 	*es.orig = (*es.orig)[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -152,6 +168,7 @@ func (es LinkSlice) CopyTo(dest LinkSlice) {
 		return
 	}
 	*dest.orig = internal.CopyLinkPtrSlice(*dest.orig, *es.orig)
+	dest.markModified()
 }
 
 // Sort sorts the Link elements within LinkSlice given the
@@ -160,4 +177,5 @@ func (es LinkSlice) CopyTo(dest LinkSlice) {
 func (es LinkSlice) Sort(less func(a, b Link) bool) {
 	es.state.AssertMutable()
 	sort.SliceStable(*es.orig, func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }

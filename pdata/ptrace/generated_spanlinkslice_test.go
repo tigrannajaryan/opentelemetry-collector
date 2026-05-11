@@ -18,7 +18,7 @@ import (
 func TestSpanLinkSlice(t *testing.T) {
 	es := NewSpanLinkSlice()
 	assert.Equal(t, 0, es.Len())
-	es = newSpanLinkSlice(&[]*internal.SpanLink{}, internal.NewState())
+	es = newSpanLinkSlice(&[]*internal.SpanLink{}, internal.NewState(), nil)
 	assert.Equal(t, 0, es.Len())
 
 	emptyVal := NewSpanLink()
@@ -35,7 +35,7 @@ func TestSpanLinkSlice(t *testing.T) {
 func TestSpanLinkSliceReadOnly(t *testing.T) {
 	sharedState := internal.NewState()
 	sharedState.MarkReadOnly()
-	es := newSpanLinkSlice(&[]*internal.SpanLink{}, sharedState)
+	es := newSpanLinkSlice(&[]*internal.SpanLink{}, sharedState, nil)
 	assert.Equal(t, 0, es.Len())
 	assert.Panics(t, func() { es.AppendEmpty() })
 	assert.Panics(t, func() { es.EnsureCapacity(2) })

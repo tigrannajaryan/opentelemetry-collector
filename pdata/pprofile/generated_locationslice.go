@@ -21,19 +21,26 @@ import (
 // Must use NewLocationSlice function to create new instances.
 // Important: zero-initialized instance is not valid for use.
 type LocationSlice struct {
-	orig  *[]*internal.Location
-	state *internal.State
+	orig   *[]*internal.Location
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 
-func newLocationSlice(orig *[]*internal.Location, state *internal.State) LocationSlice {
-	return LocationSlice{orig: orig, state: state}
+func newLocationSlice(orig *[]*internal.Location, state *internal.State, marker *internal.LazyMessage) LocationSlice {
+	return LocationSlice{orig: orig, state: state, marker: marker}
 }
 
 // NewLocationSlice creates a LocationSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewLocationSlice() LocationSlice {
 	orig := []*internal.Location(nil)
-	return newLocationSlice(&orig, internal.NewState())
+	return newLocationSlice(&orig, internal.NewState(), nil)
+}
+
+func (es LocationSlice) markModified() {
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -92,6 +99,7 @@ func (es LocationSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]*internal.Location, len(*es.orig), newCap)
 	copy(newOrig, *es.orig)
 	*es.orig = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty Location.
@@ -99,6 +107,7 @@ func (es LocationSlice) EnsureCapacity(newCap int) {
 func (es LocationSlice) AppendEmpty() Location {
 	es.state.AssertMutable()
 	*es.orig = append(*es.orig, internal.NewLocation())
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -118,6 +127,8 @@ func (es LocationSlice) MoveAndAppendTo(dest LocationSlice) {
 		*dest.orig = append(*dest.orig, *es.orig...)
 	}
 	*es.orig = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -125,8 +136,10 @@ func (es LocationSlice) MoveAndAppendTo(dest LocationSlice) {
 func (es LocationSlice) RemoveIf(f func(Location) bool) {
 	es.state.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.orig); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteLocation((*es.orig)[i], true)
 			(*es.orig)[i] = nil
 
@@ -143,6 +156,9 @@ func (es LocationSlice) RemoveIf(f func(Location) bool) {
 		newLen++
 	}
 	*es.orig = (*es.orig)[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -152,6 +168,7 @@ func (es LocationSlice) CopyTo(dest LocationSlice) {
 		return
 	}
 	*dest.orig = internal.CopyLocationPtrSlice(*dest.orig, *es.orig)
+	dest.markModified()
 }
 
 // Sort sorts the Location elements within LocationSlice given the
@@ -160,4 +177,5 @@ func (es LocationSlice) CopyTo(dest LocationSlice) {
 func (es LocationSlice) Sort(less func(a, b Location) bool) {
 	es.state.AssertMutable()
 	sort.SliceStable(*es.orig, func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }

@@ -57,8 +57,7 @@ func (ms ScopeProfiles) Scope() pcommon.InstrumentationScope {
 // Profiles returns the Profiles associated with this ScopeProfiles.
 func (ms ScopeProfiles) Profiles() ProfilesSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newProfilesSlice(&ms.orig.Profiles, ms.state)
+	return newProfilesSlice(&ms.orig.Profiles, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // SchemaUrl returns the schemaurl associated with this ScopeProfiles.

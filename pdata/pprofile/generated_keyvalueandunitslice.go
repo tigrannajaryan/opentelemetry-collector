@@ -21,19 +21,26 @@ import (
 // Must use NewKeyValueAndUnitSlice function to create new instances.
 // Important: zero-initialized instance is not valid for use.
 type KeyValueAndUnitSlice struct {
-	orig  *[]*internal.KeyValueAndUnit
-	state *internal.State
+	orig   *[]*internal.KeyValueAndUnit
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 
-func newKeyValueAndUnitSlice(orig *[]*internal.KeyValueAndUnit, state *internal.State) KeyValueAndUnitSlice {
-	return KeyValueAndUnitSlice{orig: orig, state: state}
+func newKeyValueAndUnitSlice(orig *[]*internal.KeyValueAndUnit, state *internal.State, marker *internal.LazyMessage) KeyValueAndUnitSlice {
+	return KeyValueAndUnitSlice{orig: orig, state: state, marker: marker}
 }
 
 // NewKeyValueAndUnitSlice creates a KeyValueAndUnitSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewKeyValueAndUnitSlice() KeyValueAndUnitSlice {
 	orig := []*internal.KeyValueAndUnit(nil)
-	return newKeyValueAndUnitSlice(&orig, internal.NewState())
+	return newKeyValueAndUnitSlice(&orig, internal.NewState(), nil)
+}
+
+func (es KeyValueAndUnitSlice) markModified() {
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -92,6 +99,7 @@ func (es KeyValueAndUnitSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]*internal.KeyValueAndUnit, len(*es.orig), newCap)
 	copy(newOrig, *es.orig)
 	*es.orig = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty KeyValueAndUnit.
@@ -99,6 +107,7 @@ func (es KeyValueAndUnitSlice) EnsureCapacity(newCap int) {
 func (es KeyValueAndUnitSlice) AppendEmpty() KeyValueAndUnit {
 	es.state.AssertMutable()
 	*es.orig = append(*es.orig, internal.NewKeyValueAndUnit())
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -118,6 +127,8 @@ func (es KeyValueAndUnitSlice) MoveAndAppendTo(dest KeyValueAndUnitSlice) {
 		*dest.orig = append(*dest.orig, *es.orig...)
 	}
 	*es.orig = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -125,8 +136,10 @@ func (es KeyValueAndUnitSlice) MoveAndAppendTo(dest KeyValueAndUnitSlice) {
 func (es KeyValueAndUnitSlice) RemoveIf(f func(KeyValueAndUnit) bool) {
 	es.state.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.orig); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteKeyValueAndUnit((*es.orig)[i], true)
 			(*es.orig)[i] = nil
 
@@ -143,6 +156,9 @@ func (es KeyValueAndUnitSlice) RemoveIf(f func(KeyValueAndUnit) bool) {
 		newLen++
 	}
 	*es.orig = (*es.orig)[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -152,6 +168,7 @@ func (es KeyValueAndUnitSlice) CopyTo(dest KeyValueAndUnitSlice) {
 		return
 	}
 	*dest.orig = internal.CopyKeyValueAndUnitPtrSlice(*dest.orig, *es.orig)
+	dest.markModified()
 }
 
 // Sort sorts the KeyValueAndUnit elements within KeyValueAndUnitSlice given the
@@ -160,4 +177,5 @@ func (es KeyValueAndUnitSlice) CopyTo(dest KeyValueAndUnitSlice) {
 func (es KeyValueAndUnitSlice) Sort(less func(a, b KeyValueAndUnit) bool) {
 	es.state.AssertMutable()
 	sort.SliceStable(*es.orig, func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }

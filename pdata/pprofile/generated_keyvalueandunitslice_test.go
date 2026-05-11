@@ -18,7 +18,7 @@ import (
 func TestKeyValueAndUnitSlice(t *testing.T) {
 	es := NewKeyValueAndUnitSlice()
 	assert.Equal(t, 0, es.Len())
-	es = newKeyValueAndUnitSlice(&[]*internal.KeyValueAndUnit{}, internal.NewState())
+	es = newKeyValueAndUnitSlice(&[]*internal.KeyValueAndUnit{}, internal.NewState(), nil)
 	assert.Equal(t, 0, es.Len())
 
 	emptyVal := NewKeyValueAndUnit()
@@ -35,7 +35,7 @@ func TestKeyValueAndUnitSlice(t *testing.T) {
 func TestKeyValueAndUnitSliceReadOnly(t *testing.T) {
 	sharedState := internal.NewState()
 	sharedState.MarkReadOnly()
-	es := newKeyValueAndUnitSlice(&[]*internal.KeyValueAndUnit{}, sharedState)
+	es := newKeyValueAndUnitSlice(&[]*internal.KeyValueAndUnit{}, sharedState, nil)
 	assert.Equal(t, 0, es.Len())
 	assert.Panics(t, func() { es.AppendEmpty() })
 	assert.Panics(t, func() { es.EnsureCapacity(2) })

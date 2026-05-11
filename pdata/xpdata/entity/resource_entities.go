@@ -13,7 +13,9 @@ import (
 // this function will be available in the pcommon package as part of a Resource method.
 func ResourceEntityRefs(res pcommon.Resource) EntityRefSlice {
 	ir := internal.ResourceWrapper(res)
-	return newEntityRefSlice(&internal.GetResourceOrig(ir).EntityRefs, internal.GetResourceState(ir))
+	orig := internal.GetResourceOrig(ir)
+	orig.EnsureDecoded()
+	return newEntityRefSlice(&orig.EntityRefs, internal.GetResourceState(ir), orig.LazyMessage().MutationMarker())
 }
 
 // ResourceEntities returns the Entities associated with this Resource.

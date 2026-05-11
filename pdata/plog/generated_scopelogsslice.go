@@ -21,19 +21,26 @@ import (
 // Must use NewScopeLogsSlice function to create new instances.
 // Important: zero-initialized instance is not valid for use.
 type ScopeLogsSlice struct {
-	orig  *[]*internal.ScopeLogs
-	state *internal.State
+	orig   *[]*internal.ScopeLogs
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 
-func newScopeLogsSlice(orig *[]*internal.ScopeLogs, state *internal.State) ScopeLogsSlice {
-	return ScopeLogsSlice{orig: orig, state: state}
+func newScopeLogsSlice(orig *[]*internal.ScopeLogs, state *internal.State, marker *internal.LazyMessage) ScopeLogsSlice {
+	return ScopeLogsSlice{orig: orig, state: state, marker: marker}
 }
 
 // NewScopeLogsSlice creates a ScopeLogsSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewScopeLogsSlice() ScopeLogsSlice {
 	orig := []*internal.ScopeLogs(nil)
-	return newScopeLogsSlice(&orig, internal.NewState())
+	return newScopeLogsSlice(&orig, internal.NewState(), nil)
+}
+
+func (es ScopeLogsSlice) markModified() {
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -92,6 +99,7 @@ func (es ScopeLogsSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]*internal.ScopeLogs, len(*es.orig), newCap)
 	copy(newOrig, *es.orig)
 	*es.orig = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty ScopeLogs.
@@ -99,6 +107,7 @@ func (es ScopeLogsSlice) EnsureCapacity(newCap int) {
 func (es ScopeLogsSlice) AppendEmpty() ScopeLogs {
 	es.state.AssertMutable()
 	*es.orig = append(*es.orig, internal.NewScopeLogs())
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -118,6 +127,8 @@ func (es ScopeLogsSlice) MoveAndAppendTo(dest ScopeLogsSlice) {
 		*dest.orig = append(*dest.orig, *es.orig...)
 	}
 	*es.orig = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -125,8 +136,10 @@ func (es ScopeLogsSlice) MoveAndAppendTo(dest ScopeLogsSlice) {
 func (es ScopeLogsSlice) RemoveIf(f func(ScopeLogs) bool) {
 	es.state.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.orig); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteScopeLogs((*es.orig)[i], true)
 			(*es.orig)[i] = nil
 
@@ -143,6 +156,9 @@ func (es ScopeLogsSlice) RemoveIf(f func(ScopeLogs) bool) {
 		newLen++
 	}
 	*es.orig = (*es.orig)[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -152,6 +168,7 @@ func (es ScopeLogsSlice) CopyTo(dest ScopeLogsSlice) {
 		return
 	}
 	*dest.orig = internal.CopyScopeLogsPtrSlice(*dest.orig, *es.orig)
+	dest.markModified()
 }
 
 // Sort sorts the ScopeLogs elements within ScopeLogsSlice given the
@@ -160,4 +177,5 @@ func (es ScopeLogsSlice) CopyTo(dest ScopeLogsSlice) {
 func (es ScopeLogsSlice) Sort(less func(a, b ScopeLogs) bool) {
 	es.state.AssertMutable()
 	sort.SliceStable(*es.orig, func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }

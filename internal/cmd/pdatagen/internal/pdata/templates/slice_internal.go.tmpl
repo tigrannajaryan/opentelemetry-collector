@@ -13,8 +13,9 @@ import (
 )
 
 type {{ .structName }}Wrapper struct {
-	orig *[]{{ if .elementNullable }}*{{ end }}{{ .elementOriginName }}
-	state *State
+	orig   *[]{{ if .elementNullable }}*{{ end }}{{ .elementOriginName }}
+	state  *State
+	marker *LazyMessage
 }
 
 func Get{{ .structName }}Orig(ms {{ .structName }}Wrapper) *[]{{ if .elementNullable }}*{{ end }}{{ .elementOriginName }} {
@@ -25,8 +26,16 @@ func Get{{ .structName }}State(ms {{ .structName }}Wrapper) *State {
 	return ms.state
 }
 
+func Get{{ .structName }}LazyMessage(ms {{ .structName }}Wrapper) *LazyMessage {
+	return ms.marker
+}
+
 func New{{ .structName }}Wrapper(orig *[]{{ if .elementNullable }}*{{ end }}{{ .elementOriginName }}, state *State) {{ .structName }}Wrapper {
-	return {{ .structName }}Wrapper{orig: orig, state: state}
+	return New{{ .structName }}WrapperWithLazyMessage(orig, state, nil)
+}
+
+func New{{ .structName }}WrapperWithLazyMessage(orig *[]{{ if .elementNullable }}*{{ end }}{{ .elementOriginName }}, state *State, marker *LazyMessage) {{ .structName }}Wrapper {
+	return {{ .structName }}Wrapper{orig: orig, state: state, marker: marker}
 }
 
 func GenTest{{ .structName }}Wrapper() {{ .structName }}Wrapper {

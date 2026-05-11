@@ -51,8 +51,7 @@ func (ms HistogramDataPoint) MoveTo(dest HistogramDataPoint) {
 // Attributes returns the Attributes associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) Attributes() pcommon.Map {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.Map(internal.NewMapWrapper(&ms.orig.Attributes, ms.state))
+	return pcommon.Map(internal.NewMapWrapperWithLazyMessage(&ms.orig.Attributes, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // StartTimestamp returns the starttimestamp associated with this HistogramDataPoint.
@@ -129,22 +128,19 @@ func (ms HistogramDataPoint) RemoveSum() {
 // BucketCounts returns the BucketCounts associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) BucketCounts() pcommon.UInt64Slice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.UInt64Slice(internal.NewUInt64SliceWrapper(&ms.orig.BucketCounts, ms.state))
+	return pcommon.UInt64Slice(internal.NewUInt64SliceWrapperWithLazyMessage(&ms.orig.BucketCounts, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // ExplicitBounds returns the ExplicitBounds associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) ExplicitBounds() pcommon.Float64Slice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.Float64Slice(internal.NewFloat64SliceWrapper(&ms.orig.ExplicitBounds, ms.state))
+	return pcommon.Float64Slice(internal.NewFloat64SliceWrapperWithLazyMessage(&ms.orig.ExplicitBounds, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // Exemplars returns the Exemplars associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) Exemplars() ExemplarSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newExemplarSlice(&ms.orig.Exemplars, ms.state)
+	return newExemplarSlice(&ms.orig.Exemplars, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // Flags returns the flags associated with this HistogramDataPoint.

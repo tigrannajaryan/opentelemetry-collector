@@ -18,7 +18,7 @@ import (
 func TestResourceSpansSlice(t *testing.T) {
 	es := NewResourceSpansSlice()
 	assert.Equal(t, 0, es.Len())
-	es = newResourceSpansSlice(&[]*internal.ResourceSpans{}, internal.NewState())
+	es = newResourceSpansSlice(&[]*internal.ResourceSpans{}, internal.NewState(), nil)
 	assert.Equal(t, 0, es.Len())
 
 	emptyVal := NewResourceSpans()
@@ -35,7 +35,7 @@ func TestResourceSpansSlice(t *testing.T) {
 func TestResourceSpansSliceReadOnly(t *testing.T) {
 	sharedState := internal.NewState()
 	sharedState.MarkReadOnly()
-	es := newResourceSpansSlice(&[]*internal.ResourceSpans{}, sharedState)
+	es := newResourceSpansSlice(&[]*internal.ResourceSpans{}, sharedState, nil)
 	assert.Equal(t, 0, es.Len())
 	assert.Panics(t, func() { es.AppendEmpty() })
 	assert.Panics(t, func() { es.EnsureCapacity(2) })

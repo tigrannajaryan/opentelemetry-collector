@@ -107,8 +107,7 @@ func (ms Mapping) SetFilenameStrindex(v int32) {
 // AttributeIndices returns the AttributeIndices associated with this Mapping.
 func (ms Mapping) AttributeIndices() pcommon.Int32Slice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.Int32Slice(internal.NewInt32SliceWrapper(&ms.orig.AttributeIndices, ms.state))
+	return pcommon.Int32Slice(internal.NewInt32SliceWrapperWithLazyMessage(&ms.orig.AttributeIndices, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

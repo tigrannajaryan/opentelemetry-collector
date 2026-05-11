@@ -18,7 +18,7 @@ import (
 func TestExponentialHistogramDataPointSlice(t *testing.T) {
 	es := NewExponentialHistogramDataPointSlice()
 	assert.Equal(t, 0, es.Len())
-	es = newExponentialHistogramDataPointSlice(&[]*internal.ExponentialHistogramDataPoint{}, internal.NewState())
+	es = newExponentialHistogramDataPointSlice(&[]*internal.ExponentialHistogramDataPoint{}, internal.NewState(), nil)
 	assert.Equal(t, 0, es.Len())
 
 	emptyVal := NewExponentialHistogramDataPoint()
@@ -35,7 +35,7 @@ func TestExponentialHistogramDataPointSlice(t *testing.T) {
 func TestExponentialHistogramDataPointSliceReadOnly(t *testing.T) {
 	sharedState := internal.NewState()
 	sharedState.MarkReadOnly()
-	es := newExponentialHistogramDataPointSlice(&[]*internal.ExponentialHistogramDataPoint{}, sharedState)
+	es := newExponentialHistogramDataPointSlice(&[]*internal.ExponentialHistogramDataPoint{}, sharedState, nil)
 	assert.Equal(t, 0, es.Len())
 	assert.Panics(t, func() { es.AppendEmpty() })
 	assert.Panics(t, func() { es.EnsureCapacity(2) })

@@ -87,8 +87,7 @@ func (ms SpanLink) TraceState() pcommon.TraceState {
 // Attributes returns the Attributes associated with this SpanLink.
 func (ms SpanLink) Attributes() pcommon.Map {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.Map(internal.NewMapWrapper(&ms.orig.Attributes, ms.state))
+	return pcommon.Map(internal.NewMapWrapperWithLazyMessage(&ms.orig.Attributes, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // DroppedAttributesCount returns the droppedattributescount associated with this SpanLink.

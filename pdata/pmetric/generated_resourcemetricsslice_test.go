@@ -18,7 +18,7 @@ import (
 func TestResourceMetricsSlice(t *testing.T) {
 	es := NewResourceMetricsSlice()
 	assert.Equal(t, 0, es.Len())
-	es = newResourceMetricsSlice(&[]*internal.ResourceMetrics{}, internal.NewState())
+	es = newResourceMetricsSlice(&[]*internal.ResourceMetrics{}, internal.NewState(), nil)
 	assert.Equal(t, 0, es.Len())
 
 	emptyVal := NewResourceMetrics()
@@ -35,7 +35,7 @@ func TestResourceMetricsSlice(t *testing.T) {
 func TestResourceMetricsSliceReadOnly(t *testing.T) {
 	sharedState := internal.NewState()
 	sharedState.MarkReadOnly()
-	es := newResourceMetricsSlice(&[]*internal.ResourceMetrics{}, sharedState)
+	es := newResourceMetricsSlice(&[]*internal.ResourceMetrics{}, sharedState, nil)
 	assert.Equal(t, 0, es.Len())
 	assert.Panics(t, func() { es.AppendEmpty() })
 	assert.Panics(t, func() { es.EnsureCapacity(2) })

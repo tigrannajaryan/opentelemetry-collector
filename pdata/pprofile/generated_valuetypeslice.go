@@ -21,19 +21,26 @@ import (
 // Must use NewValueTypeSlice function to create new instances.
 // Important: zero-initialized instance is not valid for use.
 type ValueTypeSlice struct {
-	orig  *[]*internal.ValueType
-	state *internal.State
+	orig   *[]*internal.ValueType
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 
-func newValueTypeSlice(orig *[]*internal.ValueType, state *internal.State) ValueTypeSlice {
-	return ValueTypeSlice{orig: orig, state: state}
+func newValueTypeSlice(orig *[]*internal.ValueType, state *internal.State, marker *internal.LazyMessage) ValueTypeSlice {
+	return ValueTypeSlice{orig: orig, state: state, marker: marker}
 }
 
 // NewValueTypeSlice creates a ValueTypeSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewValueTypeSlice() ValueTypeSlice {
 	orig := []*internal.ValueType(nil)
-	return newValueTypeSlice(&orig, internal.NewState())
+	return newValueTypeSlice(&orig, internal.NewState(), nil)
+}
+
+func (es ValueTypeSlice) markModified() {
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -92,6 +99,7 @@ func (es ValueTypeSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]*internal.ValueType, len(*es.orig), newCap)
 	copy(newOrig, *es.orig)
 	*es.orig = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty ValueType.
@@ -99,6 +107,7 @@ func (es ValueTypeSlice) EnsureCapacity(newCap int) {
 func (es ValueTypeSlice) AppendEmpty() ValueType {
 	es.state.AssertMutable()
 	*es.orig = append(*es.orig, internal.NewValueType())
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -118,6 +127,8 @@ func (es ValueTypeSlice) MoveAndAppendTo(dest ValueTypeSlice) {
 		*dest.orig = append(*dest.orig, *es.orig...)
 	}
 	*es.orig = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -125,8 +136,10 @@ func (es ValueTypeSlice) MoveAndAppendTo(dest ValueTypeSlice) {
 func (es ValueTypeSlice) RemoveIf(f func(ValueType) bool) {
 	es.state.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.orig); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteValueType((*es.orig)[i], true)
 			(*es.orig)[i] = nil
 
@@ -143,6 +156,9 @@ func (es ValueTypeSlice) RemoveIf(f func(ValueType) bool) {
 		newLen++
 	}
 	*es.orig = (*es.orig)[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -152,6 +168,7 @@ func (es ValueTypeSlice) CopyTo(dest ValueTypeSlice) {
 		return
 	}
 	*dest.orig = internal.CopyValueTypePtrSlice(*dest.orig, *es.orig)
+	dest.markModified()
 }
 
 // Sort sorts the ValueType elements within ValueTypeSlice given the
@@ -160,4 +177,5 @@ func (es ValueTypeSlice) CopyTo(dest ValueTypeSlice) {
 func (es ValueTypeSlice) Sort(less func(a, b ValueType) bool) {
 	es.state.AssertMutable()
 	sort.SliceStable(*es.orig, func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }

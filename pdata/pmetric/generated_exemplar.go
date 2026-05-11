@@ -55,8 +55,7 @@ func (ms Exemplar) MoveTo(dest Exemplar) {
 // FilteredAttributes returns the FilteredAttributes associated with this Exemplar.
 func (ms Exemplar) FilteredAttributes() pcommon.Map {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.Map(internal.NewMapWrapper(&ms.orig.FilteredAttributes, ms.state))
+	return pcommon.Map(internal.NewMapWrapperWithLazyMessage(&ms.orig.FilteredAttributes, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // Timestamp returns the timestamp associated with this Exemplar.

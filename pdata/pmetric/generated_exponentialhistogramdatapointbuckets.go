@@ -65,8 +65,7 @@ func (ms ExponentialHistogramDataPointBuckets) SetOffset(v int32) {
 // BucketCounts returns the BucketCounts associated with this ExponentialHistogramDataPointBuckets.
 func (ms ExponentialHistogramDataPointBuckets) BucketCounts() pcommon.UInt64Slice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.UInt64Slice(internal.NewUInt64SliceWrapper(&ms.orig.BucketCounts, ms.state))
+	return pcommon.UInt64Slice(internal.NewUInt64SliceWrapperWithLazyMessage(&ms.orig.BucketCounts, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

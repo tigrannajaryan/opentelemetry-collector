@@ -21,19 +21,26 @@ import (
 // Must use NewProfilesSlice function to create new instances.
 // Important: zero-initialized instance is not valid for use.
 type ProfilesSlice struct {
-	orig  *[]*internal.Profile
-	state *internal.State
+	orig   *[]*internal.Profile
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 
-func newProfilesSlice(orig *[]*internal.Profile, state *internal.State) ProfilesSlice {
-	return ProfilesSlice{orig: orig, state: state}
+func newProfilesSlice(orig *[]*internal.Profile, state *internal.State, marker *internal.LazyMessage) ProfilesSlice {
+	return ProfilesSlice{orig: orig, state: state, marker: marker}
 }
 
 // NewProfilesSlice creates a ProfilesSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewProfilesSlice() ProfilesSlice {
 	orig := []*internal.Profile(nil)
-	return newProfilesSlice(&orig, internal.NewState())
+	return newProfilesSlice(&orig, internal.NewState(), nil)
+}
+
+func (es ProfilesSlice) markModified() {
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -92,6 +99,7 @@ func (es ProfilesSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]*internal.Profile, len(*es.orig), newCap)
 	copy(newOrig, *es.orig)
 	*es.orig = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty Profile.
@@ -99,6 +107,7 @@ func (es ProfilesSlice) EnsureCapacity(newCap int) {
 func (es ProfilesSlice) AppendEmpty() Profile {
 	es.state.AssertMutable()
 	*es.orig = append(*es.orig, internal.NewProfile())
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -118,6 +127,8 @@ func (es ProfilesSlice) MoveAndAppendTo(dest ProfilesSlice) {
 		*dest.orig = append(*dest.orig, *es.orig...)
 	}
 	*es.orig = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -125,8 +136,10 @@ func (es ProfilesSlice) MoveAndAppendTo(dest ProfilesSlice) {
 func (es ProfilesSlice) RemoveIf(f func(Profile) bool) {
 	es.state.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.orig); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteProfile((*es.orig)[i], true)
 			(*es.orig)[i] = nil
 
@@ -143,6 +156,9 @@ func (es ProfilesSlice) RemoveIf(f func(Profile) bool) {
 		newLen++
 	}
 	*es.orig = (*es.orig)[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -152,6 +168,7 @@ func (es ProfilesSlice) CopyTo(dest ProfilesSlice) {
 		return
 	}
 	*dest.orig = internal.CopyProfilePtrSlice(*dest.orig, *es.orig)
+	dest.markModified()
 }
 
 // Sort sorts the Profile elements within ProfilesSlice given the
@@ -160,4 +177,5 @@ func (es ProfilesSlice) CopyTo(dest ProfilesSlice) {
 func (es ProfilesSlice) Sort(less func(a, b Profile) bool) {
 	es.state.AssertMutable()
 	sort.SliceStable(*es.orig, func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }

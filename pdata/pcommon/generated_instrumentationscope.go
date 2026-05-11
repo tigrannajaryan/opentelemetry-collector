@@ -75,8 +75,7 @@ func (ms InstrumentationScope) SetVersion(v string) {
 // Attributes returns the Attributes associated with this InstrumentationScope.
 func (ms InstrumentationScope) Attributes() Map {
 	ms.getOrig().EnsureDecoded()
-	ms.getOrig().MarkModified()
-	return Map(internal.NewMapWrapper(&ms.getOrig().Attributes, ms.getState()))
+	return Map(internal.NewMapWrapperWithLazyMessage(&ms.getOrig().Attributes, ms.getState(), ms.getOrig().LazyMessage().MutationMarker()))
 }
 
 // DroppedAttributesCount returns the droppedattributescount associated with this InstrumentationScope.

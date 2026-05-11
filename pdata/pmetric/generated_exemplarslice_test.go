@@ -17,7 +17,7 @@ import (
 func TestExemplarSlice(t *testing.T) {
 	es := NewExemplarSlice()
 	assert.Equal(t, 0, es.Len())
-	es = newExemplarSlice(&[]internal.Exemplar{}, internal.NewState())
+	es = newExemplarSlice(&[]internal.Exemplar{}, internal.NewState(), nil)
 	assert.Equal(t, 0, es.Len())
 
 	emptyVal := NewExemplar()
@@ -34,7 +34,7 @@ func TestExemplarSlice(t *testing.T) {
 func TestExemplarSliceReadOnly(t *testing.T) {
 	sharedState := internal.NewState()
 	sharedState.MarkReadOnly()
-	es := newExemplarSlice(&[]internal.Exemplar{}, sharedState)
+	es := newExemplarSlice(&[]internal.Exemplar{}, sharedState, nil)
 	assert.Equal(t, 0, es.Len())
 	assert.Panics(t, func() { es.AppendEmpty() })
 	assert.Panics(t, func() { es.EnsureCapacity(2) })

@@ -35,10 +35,21 @@ func newMap(orig *[]internal.KeyValue, state *internal.State) Map {
 	return Map(internal.NewMapWrapper(orig, state))
 }
 
+func newMapWithLazyMessage(orig *[]internal.KeyValue, state *internal.State, marker *internal.LazyMessage) Map {
+	return Map(internal.NewMapWrapperWithLazyMessage(orig, state, marker))
+}
+
+func (m Map) markModified() {
+	if marker := internal.GetMapLazyMessage(internal.MapWrapper(m)); marker != nil {
+		marker.MarkModified()
+	}
+}
+
 // Clear erases any existing entries in this Map instance.
 func (m Map) Clear() {
 	m.getState().AssertMutable()
 	*m.getOrig() = nil
+	m.markModified()
 }
 
 // EnsureCapacity increases the capacity of this Map instance, if necessary,
@@ -51,6 +62,7 @@ func (m Map) EnsureCapacity(capacity int) {
 	}
 	*m.getOrig() = make([]internal.KeyValue, len(oldOrig), capacity)
 	copy(*m.getOrig(), oldOrig)
+	m.markModified()
 }
 
 // Get returns the Value associated with the key and true. The returned
@@ -83,6 +95,7 @@ func (m Map) Remove(key string) bool {
 		if akv.Key == key {
 			*akv = (*m.getOrig())[len(*m.getOrig())-1]
 			*m.getOrig() = (*m.getOrig())[:len(*m.getOrig())-1]
+			m.markModified()
 			return true
 		}
 	}
@@ -93,10 +106,12 @@ func (m Map) Remove(key string) bool {
 func (m Map) RemoveIf(f func(string, Value) bool) {
 	m.getState().AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*m.getOrig()); i++ {
 		(*m.getOrig())[i].EnsureDecoded()
 		if f((*m.getOrig())[i].Key, newValue(&(*m.getOrig())[i].Value, m.getState())) {
 			(*m.getOrig())[i] = internal.KeyValue{}
+			removed = true
 			continue
 		}
 		if newLen == i {
@@ -109,6 +124,9 @@ func (m Map) RemoveIf(f func(string, Value) bool) {
 		newLen++
 	}
 	*m.getOrig() = (*m.getOrig())[:newLen]
+	if removed {
+		m.markModified()
+	}
 }
 
 // PutEmpty inserts or updates an empty value to the map under given key
@@ -117,9 +135,11 @@ func (m Map) PutEmpty(k string) Value {
 	m.getState().AssertMutable()
 	if av, existing := m.Get(k); existing {
 		av.getOrig().Value = nil
+		av.getOrig().MarkModified()
 		return newValue(av.getOrig(), m.getState())
 	}
 	*m.getOrig() = append(*m.getOrig(), internal.KeyValue{Key: k})
+	m.markModified()
 	return newValue(&(*m.getOrig())[len(*m.getOrig())-1].Value, m.getState())
 }
 
@@ -132,6 +152,7 @@ func (m Map) GetOrPutEmpty(k string) (Value, bool) {
 		return av, true
 	}
 	*m.getOrig() = append(*m.getOrig(), internal.KeyValue{Key: k})
+	m.markModified()
 	return newValue(&(*m.getOrig())[len(*m.getOrig())-1].Value, m.getState()), false
 }
 
@@ -147,6 +168,7 @@ func (m Map) PutStr(k, v string) {
 	ov := internal.NewAnyValueStringValue()
 	ov.StringValue = v
 	*m.getOrig() = append(*m.getOrig(), internal.KeyValue{Key: k, Value: internal.AnyValue{Value: ov}})
+	m.markModified()
 }
 
 // PutInt performs the Insert or Update action. The int Value is
@@ -161,6 +183,7 @@ func (m Map) PutInt(k string, v int64) {
 	ov := internal.NewAnyValueIntValue()
 	ov.IntValue = v
 	*m.getOrig() = append(*m.getOrig(), internal.KeyValue{Key: k, Value: internal.AnyValue{Value: ov}})
+	m.markModified()
 }
 
 // PutDouble performs the Insert or Update action. The double Value is
@@ -175,6 +198,7 @@ func (m Map) PutDouble(k string, v float64) {
 	ov := internal.NewAnyValueDoubleValue()
 	ov.DoubleValue = v
 	*m.getOrig() = append(*m.getOrig(), internal.KeyValue{Key: k, Value: internal.AnyValue{Value: ov}})
+	m.markModified()
 }
 
 // PutBool performs the Insert or Update action. The bool Value is
@@ -189,6 +213,7 @@ func (m Map) PutBool(k string, v bool) {
 	ov := internal.NewAnyValueBoolValue()
 	ov.BoolValue = v
 	*m.getOrig() = append(*m.getOrig(), internal.KeyValue{Key: k, Value: internal.AnyValue{Value: ov}})
+	m.markModified()
 }
 
 // PutEmptyBytes inserts or updates an empty byte slice under given key and returns it.
@@ -199,6 +224,7 @@ func (m Map) PutEmptyBytes(k string) ByteSlice {
 	}
 	ov := internal.NewAnyValueBytesValue()
 	*m.getOrig() = append(*m.getOrig(), internal.KeyValue{Key: k, Value: internal.AnyValue{Value: ov}})
+	m.markModified()
 	return ByteSlice(internal.NewByteSliceWrapper(&ov.BytesValue, m.getState()))
 }
 
@@ -211,6 +237,7 @@ func (m Map) PutEmptyMap(k string) Map {
 	ov := internal.NewAnyValueKvlistValue()
 	ov.KvlistValue = internal.NewKeyValueList()
 	*m.getOrig() = append(*m.getOrig(), internal.KeyValue{Key: k, Value: internal.AnyValue{Value: ov}})
+	m.markModified()
 	return Map(internal.NewMapWrapper(&ov.KvlistValue.Values, m.getState()))
 }
 
@@ -223,6 +250,7 @@ func (m Map) PutEmptySlice(k string) Slice {
 	ov := internal.NewAnyValueArrayValue()
 	ov.ArrayValue = internal.NewArrayValue()
 	*m.getOrig() = append(*m.getOrig(), internal.KeyValue{Key: k, Value: internal.AnyValue{Value: ov}})
+	m.markModified()
 	return Slice(internal.NewSliceWrapper(&ov.ArrayValue.Values, m.getState()))
 }
 
@@ -279,6 +307,8 @@ func (m Map) MoveTo(dest Map) {
 	}
 	*dest.getOrig() = *m.getOrig()
 	*m.getOrig() = nil
+	m.markModified()
+	dest.markModified()
 }
 
 // CopyTo copies all elements from the current map overriding the destination.
@@ -288,6 +318,7 @@ func (m Map) CopyTo(dest Map) {
 		return
 	}
 	*dest.getOrig() = internal.CopyKeyValueSlice(*dest.getOrig(), *m.getOrig())
+	dest.markModified()
 }
 
 // AsRaw returns a standard go map representation of this Map.
@@ -305,6 +336,7 @@ func (m Map) FromRaw(rawMap map[string]any) error {
 	m.getState().AssertMutable()
 	if len(rawMap) == 0 {
 		*m.getOrig() = nil
+		m.markModified()
 		return nil
 	}
 
@@ -317,6 +349,7 @@ func (m Map) FromRaw(rawMap map[string]any) error {
 		ix++
 	}
 	*m.getOrig() = origs
+	m.markModified()
 	return errs
 }
 

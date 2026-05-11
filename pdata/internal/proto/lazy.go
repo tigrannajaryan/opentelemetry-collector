@@ -37,6 +37,21 @@ func (m *LazyMessage) HasBytes() bool {
 	return m.bytes != nil
 }
 
+// MutationMarker returns m when mutations to a wrapper that points inside this
+// message need to invalidate existing wire bytes. Freshly constructed messages
+// have neither bytes nor a parent, so returning nil keeps ordinary in-memory
+// pdata wrappers small for equality and avoids unnecessary MarkModified calls.
+//
+// A message with no bytes but with a parent still needs to be returned. A child
+// can be materialized independently while an ancestor keeps reusable bytes, and
+// mutating the child must still bubble to that ancestor.
+func (m *LazyMessage) MutationMarker() *LazyMessage {
+	if m.bytes == nil && m.parent == nil {
+		return nil
+	}
+	return m
+}
+
 // IsDecoded reports whether the in-memory fields have been populated.
 func (m *LazyMessage) IsDecoded() bool {
 	return !m.NeedsDecode()

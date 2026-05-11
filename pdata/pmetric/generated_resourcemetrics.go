@@ -57,8 +57,7 @@ func (ms ResourceMetrics) Resource() pcommon.Resource {
 // ScopeMetrics returns the ScopeMetrics associated with this ResourceMetrics.
 func (ms ResourceMetrics) ScopeMetrics() ScopeMetricsSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newScopeMetricsSlice(&ms.orig.ScopeMetrics, ms.state)
+	return newScopeMetricsSlice(&ms.orig.ScopeMetrics, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // SchemaUrl returns the schemaurl associated with this ResourceMetrics.

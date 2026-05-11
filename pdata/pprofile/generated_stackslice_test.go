@@ -18,7 +18,7 @@ import (
 func TestStackSlice(t *testing.T) {
 	es := NewStackSlice()
 	assert.Equal(t, 0, es.Len())
-	es = newStackSlice(&[]*internal.Stack{}, internal.NewState())
+	es = newStackSlice(&[]*internal.Stack{}, internal.NewState(), nil)
 	assert.Equal(t, 0, es.Len())
 
 	emptyVal := NewStack()
@@ -35,7 +35,7 @@ func TestStackSlice(t *testing.T) {
 func TestStackSliceReadOnly(t *testing.T) {
 	sharedState := internal.NewState()
 	sharedState.MarkReadOnly()
-	es := newStackSlice(&[]*internal.Stack{}, sharedState)
+	es := newStackSlice(&[]*internal.Stack{}, sharedState, nil)
 	assert.Equal(t, 0, es.Len())
 	assert.Panics(t, func() { es.AppendEmpty() })
 	assert.Panics(t, func() { es.EnsureCapacity(2) })

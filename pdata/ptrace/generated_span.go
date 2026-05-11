@@ -170,8 +170,7 @@ func (ms Span) SetEndTimestamp(v pcommon.Timestamp) {
 // Attributes returns the Attributes associated with this Span.
 func (ms Span) Attributes() pcommon.Map {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.Map(internal.NewMapWrapper(&ms.orig.Attributes, ms.state))
+	return pcommon.Map(internal.NewMapWrapperWithLazyMessage(&ms.orig.Attributes, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // DroppedAttributesCount returns the droppedattributescount associated with this Span.
@@ -191,8 +190,7 @@ func (ms Span) SetDroppedAttributesCount(v uint32) {
 // Events returns the Events associated with this Span.
 func (ms Span) Events() SpanEventSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newSpanEventSlice(&ms.orig.Events, ms.state)
+	return newSpanEventSlice(&ms.orig.Events, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // DroppedEventsCount returns the droppedeventscount associated with this Span.
@@ -212,8 +210,7 @@ func (ms Span) SetDroppedEventsCount(v uint32) {
 // Links returns the Links associated with this Span.
 func (ms Span) Links() SpanLinkSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newSpanLinkSlice(&ms.orig.Links, ms.state)
+	return newSpanLinkSlice(&ms.orig.Links, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // DroppedLinksCount returns the droppedlinkscount associated with this Span.

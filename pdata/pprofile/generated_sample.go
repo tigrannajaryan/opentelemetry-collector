@@ -65,8 +65,7 @@ func (ms Sample) SetStackIndex(v int32) {
 // AttributeIndices returns the AttributeIndices associated with this Sample.
 func (ms Sample) AttributeIndices() pcommon.Int32Slice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.Int32Slice(internal.NewInt32SliceWrapper(&ms.orig.AttributeIndices, ms.state))
+	return pcommon.Int32Slice(internal.NewInt32SliceWrapperWithLazyMessage(&ms.orig.AttributeIndices, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // LinkIndex returns the linkindex associated with this Sample.
@@ -86,15 +85,13 @@ func (ms Sample) SetLinkIndex(v int32) {
 // Values returns the Values associated with this Sample.
 func (ms Sample) Values() pcommon.Int64Slice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.Int64Slice(internal.NewInt64SliceWrapper(&ms.orig.Values, ms.state))
+	return pcommon.Int64Slice(internal.NewInt64SliceWrapperWithLazyMessage(&ms.orig.Values, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // TimestampsUnixNano returns the TimestampsUnixNano associated with this Sample.
 func (ms Sample) TimestampsUnixNano() pcommon.UInt64Slice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return pcommon.UInt64Slice(internal.NewUInt64SliceWrapper(&ms.orig.TimestampsUnixNano, ms.state))
+	return pcommon.UInt64Slice(internal.NewUInt64SliceWrapperWithLazyMessage(&ms.orig.TimestampsUnixNano, ms.state, ms.orig.LazyMessage().MutationMarker()))
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

@@ -74,15 +74,13 @@ func (ms EntityRef) SetType(v string) {
 // IdKeys returns the IdKeys associated with this EntityRef.
 func (ms EntityRef) IdKeys() pcommon.StringSlice {
 	ms.getOrig().EnsureDecoded()
-	ms.getOrig().MarkModified()
-	return pcommon.StringSlice(internal.NewStringSliceWrapper(&ms.getOrig().IdKeys, ms.getState()))
+	return pcommon.StringSlice(internal.NewStringSliceWrapperWithLazyMessage(&ms.getOrig().IdKeys, ms.getState(), ms.getOrig().LazyMessage().MutationMarker()))
 }
 
 // DescriptionKeys returns the DescriptionKeys associated with this EntityRef.
 func (ms EntityRef) DescriptionKeys() pcommon.StringSlice {
 	ms.getOrig().EnsureDecoded()
-	ms.getOrig().MarkModified()
-	return pcommon.StringSlice(internal.NewStringSliceWrapper(&ms.getOrig().DescriptionKeys, ms.getState()))
+	return pcommon.StringSlice(internal.NewStringSliceWrapperWithLazyMessage(&ms.getOrig().DescriptionKeys, ms.getState(), ms.getOrig().LazyMessage().MutationMarker()))
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

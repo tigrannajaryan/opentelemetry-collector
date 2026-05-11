@@ -47,8 +47,7 @@ func (ms Resource) MoveTo(dest Resource) {
 // Attributes returns the Attributes associated with this Resource.
 func (ms Resource) Attributes() Map {
 	ms.getOrig().EnsureDecoded()
-	ms.getOrig().MarkModified()
-	return Map(internal.NewMapWrapper(&ms.getOrig().Attributes, ms.getState()))
+	return Map(internal.NewMapWrapperWithLazyMessage(&ms.getOrig().Attributes, ms.getState(), ms.getOrig().LazyMessage().MutationMarker()))
 }
 
 // DroppedAttributesCount returns the droppedattributescount associated with this Resource.

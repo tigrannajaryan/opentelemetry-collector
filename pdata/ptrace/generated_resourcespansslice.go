@@ -21,19 +21,26 @@ import (
 // Must use NewResourceSpansSlice function to create new instances.
 // Important: zero-initialized instance is not valid for use.
 type ResourceSpansSlice struct {
-	orig  *[]*internal.ResourceSpans
-	state *internal.State
+	orig   *[]*internal.ResourceSpans
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 
-func newResourceSpansSlice(orig *[]*internal.ResourceSpans, state *internal.State) ResourceSpansSlice {
-	return ResourceSpansSlice{orig: orig, state: state}
+func newResourceSpansSlice(orig *[]*internal.ResourceSpans, state *internal.State, marker *internal.LazyMessage) ResourceSpansSlice {
+	return ResourceSpansSlice{orig: orig, state: state, marker: marker}
 }
 
 // NewResourceSpansSlice creates a ResourceSpansSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewResourceSpansSlice() ResourceSpansSlice {
 	orig := []*internal.ResourceSpans(nil)
-	return newResourceSpansSlice(&orig, internal.NewState())
+	return newResourceSpansSlice(&orig, internal.NewState(), nil)
+}
+
+func (es ResourceSpansSlice) markModified() {
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -92,6 +99,7 @@ func (es ResourceSpansSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]*internal.ResourceSpans, len(*es.orig), newCap)
 	copy(newOrig, *es.orig)
 	*es.orig = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty ResourceSpans.
@@ -99,6 +107,7 @@ func (es ResourceSpansSlice) EnsureCapacity(newCap int) {
 func (es ResourceSpansSlice) AppendEmpty() ResourceSpans {
 	es.state.AssertMutable()
 	*es.orig = append(*es.orig, internal.NewResourceSpans())
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -118,6 +127,8 @@ func (es ResourceSpansSlice) MoveAndAppendTo(dest ResourceSpansSlice) {
 		*dest.orig = append(*dest.orig, *es.orig...)
 	}
 	*es.orig = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -125,8 +136,10 @@ func (es ResourceSpansSlice) MoveAndAppendTo(dest ResourceSpansSlice) {
 func (es ResourceSpansSlice) RemoveIf(f func(ResourceSpans) bool) {
 	es.state.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.orig); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteResourceSpans((*es.orig)[i], true)
 			(*es.orig)[i] = nil
 
@@ -143,6 +156,9 @@ func (es ResourceSpansSlice) RemoveIf(f func(ResourceSpans) bool) {
 		newLen++
 	}
 	*es.orig = (*es.orig)[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -152,6 +168,7 @@ func (es ResourceSpansSlice) CopyTo(dest ResourceSpansSlice) {
 		return
 	}
 	*dest.orig = internal.CopyResourceSpansPtrSlice(*dest.orig, *es.orig)
+	dest.markModified()
 }
 
 // Sort sorts the ResourceSpans elements within ResourceSpansSlice given the
@@ -160,4 +177,5 @@ func (es ResourceSpansSlice) CopyTo(dest ResourceSpansSlice) {
 func (es ResourceSpansSlice) Sort(less func(a, b ResourceSpans) bool) {
 	es.state.AssertMutable()
 	sort.SliceStable(*es.orig, func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }

@@ -18,7 +18,7 @@ import (
 func TestSummaryDataPointSlice(t *testing.T) {
 	es := NewSummaryDataPointSlice()
 	assert.Equal(t, 0, es.Len())
-	es = newSummaryDataPointSlice(&[]*internal.SummaryDataPoint{}, internal.NewState())
+	es = newSummaryDataPointSlice(&[]*internal.SummaryDataPoint{}, internal.NewState(), nil)
 	assert.Equal(t, 0, es.Len())
 
 	emptyVal := NewSummaryDataPoint()
@@ -35,7 +35,7 @@ func TestSummaryDataPointSlice(t *testing.T) {
 func TestSummaryDataPointSliceReadOnly(t *testing.T) {
 	sharedState := internal.NewState()
 	sharedState.MarkReadOnly()
-	es := newSummaryDataPointSlice(&[]*internal.SummaryDataPoint{}, sharedState)
+	es := newSummaryDataPointSlice(&[]*internal.SummaryDataPoint{}, sharedState, nil)
 	assert.Equal(t, 0, es.Len())
 	assert.Panics(t, func() { es.AppendEmpty() })
 	assert.Panics(t, func() { es.EnsureCapacity(2) })

@@ -57,8 +57,7 @@ func (ms ResourceSpans) Resource() pcommon.Resource {
 // ScopeSpans returns the ScopeSpans associated with this ResourceSpans.
 func (ms ResourceSpans) ScopeSpans() ScopeSpansSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newScopeSpansSlice(&ms.orig.ScopeSpans, ms.state)
+	return newScopeSpansSlice(&ms.orig.ScopeSpans, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // SchemaUrl returns the schemaurl associated with this ResourceSpans.

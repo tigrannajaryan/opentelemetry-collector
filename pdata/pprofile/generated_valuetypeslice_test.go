@@ -18,7 +18,7 @@ import (
 func TestValueTypeSlice(t *testing.T) {
 	es := NewValueTypeSlice()
 	assert.Equal(t, 0, es.Len())
-	es = newValueTypeSlice(&[]*internal.ValueType{}, internal.NewState())
+	es = newValueTypeSlice(&[]*internal.ValueType{}, internal.NewState(), nil)
 	assert.Equal(t, 0, es.Len())
 
 	emptyVal := NewValueType()
@@ -35,7 +35,7 @@ func TestValueTypeSlice(t *testing.T) {
 func TestValueTypeSliceReadOnly(t *testing.T) {
 	sharedState := internal.NewState()
 	sharedState.MarkReadOnly()
-	es := newValueTypeSlice(&[]*internal.ValueType{}, sharedState)
+	es := newValueTypeSlice(&[]*internal.ValueType{}, sharedState, nil)
 	assert.Equal(t, 0, es.Len())
 	assert.Panics(t, func() { es.AppendEmpty() })
 	assert.Panics(t, func() { es.EnsureCapacity(2) })

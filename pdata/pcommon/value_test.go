@@ -197,7 +197,7 @@ func TestValueSlice(t *testing.T) {
 
 	// Test nil values case for Slice() func.
 	a1 = newValue(&internal.AnyValue{Value: &internal.AnyValue_ArrayValue{ArrayValue: nil}}, internal.NewState())
-	assert.Equal(t, newSlice(nil, nil), a1.Slice())
+	assert.Equal(t, newSlice(nil, nil, nil), a1.Slice())
 }
 
 func TestNilOrigSetValue(t *testing.T) {
@@ -260,7 +260,7 @@ func TestSliceWithNilValues(t *testing.T) {
 		{},
 		{Value: &internal.AnyValue_StringValue{StringValue: "test_value"}},
 	}
-	sm := newSlice(&origWithNil, internal.NewState())
+	sm := newSlice(&origWithNil, internal.NewState(), nil)
 
 	val := sm.At(0)
 	assert.Equal(t, ValueTypeEmpty, val.Type())

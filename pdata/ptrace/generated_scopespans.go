@@ -57,8 +57,7 @@ func (ms ScopeSpans) Scope() pcommon.InstrumentationScope {
 // Spans returns the Spans associated with this ScopeSpans.
 func (ms ScopeSpans) Spans() SpanSlice {
 	ms.orig.EnsureDecoded()
-	ms.orig.MarkModified()
-	return newSpanSlice(&ms.orig.Spans, ms.state)
+	return newSpanSlice(&ms.orig.Spans, ms.state, ms.orig.LazyMessage().MutationMarker())
 }
 
 // SchemaUrl returns the schemaurl associated with this ScopeSpans.

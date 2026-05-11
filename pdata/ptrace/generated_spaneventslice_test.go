@@ -18,7 +18,7 @@ import (
 func TestSpanEventSlice(t *testing.T) {
 	es := NewSpanEventSlice()
 	assert.Equal(t, 0, es.Len())
-	es = newSpanEventSlice(&[]*internal.SpanEvent{}, internal.NewState())
+	es = newSpanEventSlice(&[]*internal.SpanEvent{}, internal.NewState(), nil)
 	assert.Equal(t, 0, es.Len())
 
 	emptyVal := NewSpanEvent()
@@ -35,7 +35,7 @@ func TestSpanEventSlice(t *testing.T) {
 func TestSpanEventSliceReadOnly(t *testing.T) {
 	sharedState := internal.NewState()
 	sharedState.MarkReadOnly()
-	es := newSpanEventSlice(&[]*internal.SpanEvent{}, sharedState)
+	es := newSpanEventSlice(&[]*internal.SpanEvent{}, sharedState, nil)
 	assert.Equal(t, 0, es.Len())
 	assert.Panics(t, func() { es.AppendEmpty() })
 	assert.Panics(t, func() { es.EnsureCapacity(2) })

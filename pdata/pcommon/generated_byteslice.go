@@ -34,6 +34,12 @@ func NewByteSlice() ByteSlice {
 	return ByteSlice(internal.NewByteSliceWrapper(&orig, internal.NewState()))
 }
 
+func (ms ByteSlice) markModified() {
+	if marker := internal.GetByteSliceLazyMessage(internal.ByteSliceWrapper(ms)); marker != nil {
+		marker.MarkModified()
+	}
+}
+
 // AsRaw returns a copy of the []byte slice.
 func (ms ByteSlice) AsRaw() []byte {
 	return copyByteSlice(nil, *ms.getOrig())
@@ -43,6 +49,7 @@ func (ms ByteSlice) AsRaw() []byte {
 func (ms ByteSlice) FromRaw(val []byte) {
 	ms.getState().AssertMutable()
 	*ms.getOrig() = copyByteSlice(*ms.getOrig(), val)
+	ms.markModified()
 }
 
 // Len returns length of the []byte slice value.
@@ -73,6 +80,7 @@ func (ms ByteSlice) All() iter.Seq2[int, byte] {
 func (ms ByteSlice) SetAt(i int, val byte) {
 	ms.getState().AssertMutable()
 	(*ms.getOrig())[i] = val
+	ms.markModified()
 }
 
 // EnsureCapacity ensures ByteSlice has at least the specified capacity.
@@ -91,6 +99,7 @@ func (ms ByteSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]byte, len(*ms.getOrig()), newCap)
 	copy(newOrig, *ms.getOrig())
 	*ms.getOrig() = newOrig
+	ms.markModified()
 }
 
 // Append appends extra elements to ByteSlice.
@@ -98,6 +107,9 @@ func (ms ByteSlice) EnsureCapacity(newCap int) {
 func (ms ByteSlice) Append(elms ...byte) {
 	ms.getState().AssertMutable()
 	*ms.getOrig() = append(*ms.getOrig(), elms...)
+	if len(elms) > 0 {
+		ms.markModified()
+	}
 }
 
 // MoveTo moves all elements from the current slice overriding the destination and
@@ -111,6 +123,8 @@ func (ms ByteSlice) MoveTo(dest ByteSlice) {
 	}
 	*dest.getOrig() = *ms.getOrig()
 	*ms.getOrig() = nil
+	ms.markModified()
+	dest.markModified()
 }
 
 // MoveAndAppendTo moves all elements from the current slice and appends them to the dest.
@@ -125,6 +139,8 @@ func (ms ByteSlice) MoveAndAppendTo(dest ByteSlice) {
 		*dest.getOrig() = append(*dest.getOrig(), *ms.getOrig()...)
 	}
 	*ms.getOrig() = nil
+	ms.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -132,8 +148,10 @@ func (ms ByteSlice) MoveAndAppendTo(dest ByteSlice) {
 func (ms ByteSlice) RemoveIf(f func(byte) bool) {
 	ms.getState().AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*ms.getOrig()); i++ {
 		if f((*ms.getOrig())[i]) {
+			removed = true
 			continue
 		}
 		if newLen == i {
@@ -147,6 +165,9 @@ func (ms ByteSlice) RemoveIf(f func(byte) bool) {
 		newLen++
 	}
 	*ms.getOrig() = (*ms.getOrig())[:newLen]
+	if removed {
+		ms.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -156,6 +177,7 @@ func (ms ByteSlice) CopyTo(dest ByteSlice) {
 		return
 	}
 	*dest.getOrig() = copyByteSlice(*dest.getOrig(), *ms.getOrig())
+	dest.markModified()
 }
 
 // Equal checks equality with another ByteSlice

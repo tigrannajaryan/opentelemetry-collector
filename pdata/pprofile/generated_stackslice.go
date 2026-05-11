@@ -21,19 +21,26 @@ import (
 // Must use NewStackSlice function to create new instances.
 // Important: zero-initialized instance is not valid for use.
 type StackSlice struct {
-	orig  *[]*internal.Stack
-	state *internal.State
+	orig   *[]*internal.Stack
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 
-func newStackSlice(orig *[]*internal.Stack, state *internal.State) StackSlice {
-	return StackSlice{orig: orig, state: state}
+func newStackSlice(orig *[]*internal.Stack, state *internal.State, marker *internal.LazyMessage) StackSlice {
+	return StackSlice{orig: orig, state: state, marker: marker}
 }
 
 // NewStackSlice creates a StackSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewStackSlice() StackSlice {
 	orig := []*internal.Stack(nil)
-	return newStackSlice(&orig, internal.NewState())
+	return newStackSlice(&orig, internal.NewState(), nil)
+}
+
+func (es StackSlice) markModified() {
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -92,6 +99,7 @@ func (es StackSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]*internal.Stack, len(*es.orig), newCap)
 	copy(newOrig, *es.orig)
 	*es.orig = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty Stack.
@@ -99,6 +107,7 @@ func (es StackSlice) EnsureCapacity(newCap int) {
 func (es StackSlice) AppendEmpty() Stack {
 	es.state.AssertMutable()
 	*es.orig = append(*es.orig, internal.NewStack())
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -118,6 +127,8 @@ func (es StackSlice) MoveAndAppendTo(dest StackSlice) {
 		*dest.orig = append(*dest.orig, *es.orig...)
 	}
 	*es.orig = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -125,8 +136,10 @@ func (es StackSlice) MoveAndAppendTo(dest StackSlice) {
 func (es StackSlice) RemoveIf(f func(Stack) bool) {
 	es.state.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.orig); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteStack((*es.orig)[i], true)
 			(*es.orig)[i] = nil
 
@@ -143,6 +156,9 @@ func (es StackSlice) RemoveIf(f func(Stack) bool) {
 		newLen++
 	}
 	*es.orig = (*es.orig)[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -152,6 +168,7 @@ func (es StackSlice) CopyTo(dest StackSlice) {
 		return
 	}
 	*dest.orig = internal.CopyStackPtrSlice(*dest.orig, *es.orig)
+	dest.markModified()
 }
 
 // Sort sorts the Stack elements within StackSlice given the
@@ -160,4 +177,5 @@ func (es StackSlice) CopyTo(dest StackSlice) {
 func (es StackSlice) Sort(less func(a, b Stack) bool) {
 	es.state.AssertMutable()
 	sort.SliceStable(*es.orig, func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }

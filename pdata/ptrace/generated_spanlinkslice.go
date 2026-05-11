@@ -21,19 +21,26 @@ import (
 // Must use NewSpanLinkSlice function to create new instances.
 // Important: zero-initialized instance is not valid for use.
 type SpanLinkSlice struct {
-	orig  *[]*internal.SpanLink
-	state *internal.State
+	orig   *[]*internal.SpanLink
+	state  *internal.State
+	marker *internal.LazyMessage
 }
 
-func newSpanLinkSlice(orig *[]*internal.SpanLink, state *internal.State) SpanLinkSlice {
-	return SpanLinkSlice{orig: orig, state: state}
+func newSpanLinkSlice(orig *[]*internal.SpanLink, state *internal.State, marker *internal.LazyMessage) SpanLinkSlice {
+	return SpanLinkSlice{orig: orig, state: state, marker: marker}
 }
 
 // NewSpanLinkSlice creates a SpanLinkSliceWrapper with 0 elements.
 // Can use "EnsureCapacity" to initialize with a given capacity.
 func NewSpanLinkSlice() SpanLinkSlice {
 	orig := []*internal.SpanLink(nil)
-	return newSpanLinkSlice(&orig, internal.NewState())
+	return newSpanLinkSlice(&orig, internal.NewState(), nil)
+}
+
+func (es SpanLinkSlice) markModified() {
+	if es.marker != nil {
+		es.marker.MarkModified()
+	}
 }
 
 // Len returns the number of elements in the slice.
@@ -92,6 +99,7 @@ func (es SpanLinkSlice) EnsureCapacity(newCap int) {
 	newOrig := make([]*internal.SpanLink, len(*es.orig), newCap)
 	copy(newOrig, *es.orig)
 	*es.orig = newOrig
+	es.markModified()
 }
 
 // AppendEmpty will append to the end of the slice an empty SpanLink.
@@ -99,6 +107,7 @@ func (es SpanLinkSlice) EnsureCapacity(newCap int) {
 func (es SpanLinkSlice) AppendEmpty() SpanLink {
 	es.state.AssertMutable()
 	*es.orig = append(*es.orig, internal.NewSpanLink())
+	es.markModified()
 	return es.At(es.Len() - 1)
 }
 
@@ -118,6 +127,8 @@ func (es SpanLinkSlice) MoveAndAppendTo(dest SpanLinkSlice) {
 		*dest.orig = append(*dest.orig, *es.orig...)
 	}
 	*es.orig = nil
+	es.markModified()
+	dest.markModified()
 }
 
 // RemoveIf calls f sequentially for each element present in the slice.
@@ -125,8 +136,10 @@ func (es SpanLinkSlice) MoveAndAppendTo(dest SpanLinkSlice) {
 func (es SpanLinkSlice) RemoveIf(f func(SpanLink) bool) {
 	es.state.AssertMutable()
 	newLen := 0
+	removed := false
 	for i := 0; i < len(*es.orig); i++ {
 		if f(es.At(i)) {
+			removed = true
 			internal.DeleteSpanLink((*es.orig)[i], true)
 			(*es.orig)[i] = nil
 
@@ -143,6 +156,9 @@ func (es SpanLinkSlice) RemoveIf(f func(SpanLink) bool) {
 		newLen++
 	}
 	*es.orig = (*es.orig)[:newLen]
+	if removed {
+		es.markModified()
+	}
 }
 
 // CopyTo copies all elements from the current slice overriding the destination.
@@ -152,6 +168,7 @@ func (es SpanLinkSlice) CopyTo(dest SpanLinkSlice) {
 		return
 	}
 	*dest.orig = internal.CopySpanLinkPtrSlice(*dest.orig, *es.orig)
+	dest.markModified()
 }
 
 // Sort sorts the SpanLink elements within SpanLinkSlice given the
@@ -160,4 +177,5 @@ func (es SpanLinkSlice) CopyTo(dest SpanLinkSlice) {
 func (es SpanLinkSlice) Sort(less func(a, b SpanLink) bool) {
 	es.state.AssertMutable()
 	sort.SliceStable(*es.orig, func(i, j int) bool { return less(es.At(i), es.At(j)) })
+	es.markModified()
 }

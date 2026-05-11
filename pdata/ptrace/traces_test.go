@@ -62,6 +62,45 @@ func TestSpanCountWithEmpty(t *testing.T) {
 	}, new(internal.State)).SpanCount())
 }
 
+func TestLazyCollectionGettersPreserveWireBytes(t *testing.T) {
+	td := NewTraces()
+	td.ResourceSpans().AppendEmpty().ScopeSpans().AppendEmpty().Spans().AppendEmpty().SetName("span")
+
+	wire, err := (&ProtoMarshaler{}).MarshalTraces(td)
+	require.NoError(t, err)
+	decoded, err := (&ProtoUnmarshaler{}).UnmarshalTraces(wire)
+	require.NoError(t, err)
+	require.True(t, decoded.getOrig().LazyMessage().HasBytes())
+
+	rss := decoded.ResourceSpans()
+	assert.True(t, decoded.getOrig().LazyMessage().HasBytes())
+	scopeSpans := rss.At(0).ScopeSpans()
+	assert.True(t, decoded.getOrig().LazyMessage().HasBytes())
+	_ = scopeSpans.At(0).Spans()
+	assert.True(t, decoded.getOrig().LazyMessage().HasBytes())
+}
+
+func TestLazyCollectionMutationInvalidatesWireBytes(t *testing.T) {
+	td := NewTraces()
+	td.ResourceSpans().AppendEmpty().ScopeSpans().AppendEmpty().Spans().AppendEmpty().SetName("span")
+
+	wire, err := (&ProtoMarshaler{}).MarshalTraces(td)
+	require.NoError(t, err)
+	decoded, err := (&ProtoUnmarshaler{}).UnmarshalTraces(wire)
+	require.NoError(t, err)
+
+	decoded.ResourceSpans().At(0).Resource().Attributes().PutStr("foo", "bar")
+	require.False(t, decoded.getOrig().LazyMessage().HasBytes())
+
+	wire, err = (&ProtoMarshaler{}).MarshalTraces(decoded)
+	require.NoError(t, err)
+	roundTrip, err := (&ProtoUnmarshaler{}).UnmarshalTraces(wire)
+	require.NoError(t, err)
+	val, ok := roundTrip.ResourceSpans().At(0).Resource().Attributes().Get("foo")
+	require.True(t, ok)
+	assert.Equal(t, "bar", val.Str())
+}
+
 func TestTracesCopyTo(t *testing.T) {
 	td := generateTestTraces()
 	tracesCopy := NewTraces()
