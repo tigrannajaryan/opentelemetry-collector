@@ -39,7 +39,14 @@ func (m *LazyMessage) HasBytes() bool {
 
 // IsDecoded reports whether the in-memory fields have been populated.
 func (m *LazyMessage) IsDecoded() bool {
-	return m.decoded || m.bytes == nil
+	return !m.NeedsDecode()
+}
+
+// NeedsDecode reports whether the message still needs its wire bytes decoded.
+// It is intentionally tiny so generated EnsureDecoded methods have an inlinable
+// fast path for the common already-decoded or locally-built message.
+func (m *LazyMessage) NeedsDecode() bool {
+	return m.bytes != nil && !m.decoded
 }
 
 // MarkDecoded records that in-memory fields have been populated from the bytes.
@@ -49,7 +56,9 @@ func (m *LazyMessage) MarkDecoded() {
 	}
 }
 
-// MarkModified clears reusable wire bytes on this message and all parents.
+// MarkModified clears reusable wire bytes on this message and all parents. It
+// intentionally does not decode first; mutating callers must materialize the
+// fields they are about to change before discarding the raw representation.
 //
 // The walk intentionally continues through parents whose own bytes are already
 // nil. A child can be fully materialized before it is changed while an ancestor

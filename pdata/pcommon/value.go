@@ -258,6 +258,7 @@ func (v Value) Map() Map {
 	if kvlist == nil {
 		return Map{}
 	}
+	kvlist.EnsureDecoded()
 	kvlist.MarkModified()
 	return newMap(&kvlist.Values, internal.GetValueState(internal.ValueWrapper(v)))
 }
@@ -271,6 +272,7 @@ func (v Value) Slice() Slice {
 	if arr == nil {
 		return Slice{}
 	}
+	arr.EnsureDecoded()
 	arr.MarkModified()
 	return newSlice(&arr.Values, internal.GetValueState(internal.ValueWrapper(v)))
 }

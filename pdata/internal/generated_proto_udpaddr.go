@@ -242,9 +242,13 @@ func (orig *UDPAddr) UnmarshalProto(buf []byte) error {
 // protobuf bytes. Embedded messages keep their own byte references and are
 // decoded by their getters.
 func (orig *UDPAddr) EnsureDecoded() {
-	if orig == nil || orig.lazy.IsDecoded() {
+	if orig == nil || !orig.lazy.NeedsDecode() {
 		return
 	}
+	orig.ensureDecoded()
+}
+
+func (orig *UDPAddr) ensureDecoded() {
 	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
 		// UnmarshalProto validates the full message tree before storing bytes,
 		// so a decode failure here means the message was mutated externally.
@@ -253,9 +257,10 @@ func (orig *UDPAddr) EnsureDecoded() {
 	orig.lazy.MarkDecoded()
 }
 
-// MarkModified records that this message must be re-encoded from fields.
+// MarkModified records that this message must be re-encoded from fields. It
+// assumes callers already decoded any fields they need before clearing wire
+// bytes; keeping decode out of this method avoids a redundant hot-path check.
 func (orig *UDPAddr) MarkModified() {
-	orig.EnsureDecoded()
 	orig.lazy.MarkModified()
 }
 
