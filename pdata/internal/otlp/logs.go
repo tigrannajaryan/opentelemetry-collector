@@ -11,9 +11,17 @@ import (
 // Any plog.Unmarshaler implementation from OTLP (proto/json) MUST call this, and the gRPC Server implementation.
 func MigrateLogs(rls []*internal.ResourceLogs) {
 	for _, rl := range rls {
+		if rl == nil {
+			continue
+		}
+		rl.EnsureDecoded()
+		if len(rl.DeprecatedScopeLogs) == 0 {
+			continue
+		}
 		if len(rl.ScopeLogs) == 0 {
 			rl.ScopeLogs = rl.DeprecatedScopeLogs
 		}
 		rl.DeprecatedScopeLogs = nil
+		rl.MarkModified()
 	}
 }

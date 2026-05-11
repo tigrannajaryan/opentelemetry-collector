@@ -30,3 +30,20 @@ func TestDeprecatedScopeSpans(t *testing.T) {
 	assert.Nil(t, rss[0].DeprecatedScopeSpans)
 	assert.Nil(t, rss[0].DeprecatedScopeSpans)
 }
+
+func TestDeprecatedScopeSpansMigrationKeepsNestedMessagesLazy(t *testing.T) {
+	src := &internal.ResourceSpans{
+		DeprecatedScopeSpans: []*internal.ScopeSpans{internal.GenTestScopeSpans()},
+	}
+	buf := make([]byte, src.SizeProto())
+	src.MarshalProto(buf)
+
+	rs := internal.NewResourceSpans()
+	assert.NoError(t, rs.UnmarshalProto(buf))
+
+	MigrateTraces([]*internal.ResourceSpans{rs})
+
+	assert.Len(t, rs.ScopeSpans, 1)
+	assert.Nil(t, rs.DeprecatedScopeSpans)
+	assert.True(t, rs.ScopeSpans[0].LazyMessage().NeedsDecode())
+}

@@ -117,11 +117,11 @@ message.
 Most public pdata access should remain lazy. A few internal paths must fully
 materialize before mutating generated structs directly:
 
-* OTLP request `UnmarshalProto` methods in `pdata/*/*otlp/request.go` call
-  `DecodeAll` before running deprecated-field migration helpers from
-  `pdata/internal/otlp`.
-* Raw gRPC server adapters in `pdata/*/*otlp/grpc.go` call `DecodeAll` before
-  migration for the same reason.
+* OTLP request `UnmarshalProto` methods and raw gRPC server adapters in
+  `pdata/*/*otlp` decode only the request's direct fields before running
+  deprecated-field migration helpers from `pdata/internal/otlp`. Those helpers
+  materialize only the direct `Resource*` fields needed to detect deprecated
+  scope fields and leave nested telemetry messages lazy.
 * Tests that compare generated internal structs call `DecodeAll` before
   equality assertions because otherwise equivalent messages may differ only by
   lazy raw-byte state.

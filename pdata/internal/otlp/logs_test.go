@@ -30,3 +30,20 @@ func TestDeprecatedScopeLogs(t *testing.T) {
 	assert.Nil(t, rls[0].DeprecatedScopeLogs)
 	assert.Nil(t, rls[0].DeprecatedScopeLogs)
 }
+
+func TestDeprecatedScopeLogsMigrationKeepsNestedMessagesLazy(t *testing.T) {
+	src := &internal.ResourceLogs{
+		DeprecatedScopeLogs: []*internal.ScopeLogs{internal.GenTestScopeLogs()},
+	}
+	buf := make([]byte, src.SizeProto())
+	src.MarshalProto(buf)
+
+	rl := internal.NewResourceLogs()
+	assert.NoError(t, rl.UnmarshalProto(buf))
+
+	MigrateLogs([]*internal.ResourceLogs{rl})
+
+	assert.Len(t, rl.ScopeLogs, 1)
+	assert.Nil(t, rl.DeprecatedScopeLogs)
+	assert.True(t, rl.ScopeLogs[0].LazyMessage().NeedsDecode())
+}

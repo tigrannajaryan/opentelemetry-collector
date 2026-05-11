@@ -66,6 +66,17 @@ func TestRequestJSON(t *testing.T) {
 	assert.Equal(t, strings.Join(strings.Fields(string(profilesRequestJSON)), ""), string(got))
 }
 
+func TestRequestUnmarshalProtoKeepsRequestLazy(t *testing.T) {
+	src := NewExportRequestFromProfiles(pprofile.Profiles(internal.GenTestProfilesWrapper()))
+	wire, err := src.MarshalProto()
+	require.NoError(t, err)
+
+	dst := NewExportRequest()
+	require.NoError(t, dst.UnmarshalProto(wire))
+
+	assert.True(t, dst.orig.LazyMessage().NeedsDecode())
+}
+
 func TestProfilesProtoWireCompatibility(t *testing.T) {
 	// This test verifies that OTLP ProtoBufs generated using goproto lib in
 	// opentelemetry-proto repository OTLP ProtoBufs generated using gogoproto lib in

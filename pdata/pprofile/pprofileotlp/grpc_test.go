@@ -94,7 +94,10 @@ type fakeProfilesServer struct {
 }
 
 func (f fakeProfilesServer) Export(_ context.Context, request ExportRequest) (ExportResponse, error) {
-	assert.Equal(f.t, generateProfilesRequest(), request)
+	expected := generateProfilesRequest()
+	expected.orig.DecodeAll()
+	request.orig.DecodeAll()
+	assert.Equal(f.t, expected, request)
 	return NewExportResponse(), f.err
 }
 

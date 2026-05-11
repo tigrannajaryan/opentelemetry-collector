@@ -30,3 +30,20 @@ func TestDeprecatedScopeMetrics(t *testing.T) {
 	assert.Nil(t, rms[0].DeprecatedScopeMetrics)
 	assert.Nil(t, rms[0].DeprecatedScopeMetrics)
 }
+
+func TestDeprecatedScopeMetricsMigrationKeepsNestedMessagesLazy(t *testing.T) {
+	src := &internal.ResourceMetrics{
+		DeprecatedScopeMetrics: []*internal.ScopeMetrics{internal.GenTestScopeMetrics()},
+	}
+	buf := make([]byte, src.SizeProto())
+	src.MarshalProto(buf)
+
+	rm := internal.NewResourceMetrics()
+	assert.NoError(t, rm.UnmarshalProto(buf))
+
+	MigrateMetrics([]*internal.ResourceMetrics{rm})
+
+	assert.Len(t, rm.ScopeMetrics, 1)
+	assert.Nil(t, rm.DeprecatedScopeMetrics)
+	assert.True(t, rm.ScopeMetrics[0].LazyMessage().NeedsDecode())
+}

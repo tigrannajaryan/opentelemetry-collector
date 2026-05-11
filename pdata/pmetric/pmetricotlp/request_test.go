@@ -59,6 +59,19 @@ func TestRequestJSON(t *testing.T) {
 	assert.Equal(t, strings.Join(strings.Fields(string(metricsRequestJSON)), ""), string(got))
 }
 
+func TestRequestUnmarshalProtoKeepsNestedMessagesLazy(t *testing.T) {
+	src := NewExportRequestFromMetrics(pmetric.Metrics(internal.GenTestMetricsWrapper()))
+	wire, err := src.MarshalProto()
+	require.NoError(t, err)
+
+	dst := NewExportRequest()
+	require.NoError(t, dst.UnmarshalProto(wire))
+
+	require.Len(t, dst.orig.ResourceMetrics, 2)
+	require.Len(t, dst.orig.ResourceMetrics[1].ScopeMetrics, 2)
+	assert.True(t, dst.orig.ResourceMetrics[1].ScopeMetrics[1].LazyMessage().NeedsDecode())
+}
+
 func TestMetricsProtoWireCompatibility(t *testing.T) {
 	// This test verifies that OTLP ProtoBufs generated using goproto lib in
 	// opentelemetry-proto repository OTLP ProtoBufs generated using gogoproto lib in

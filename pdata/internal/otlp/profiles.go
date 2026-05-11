@@ -8,5 +8,6 @@ import (
 )
 
 // MigrateProfiles implements any translation needed due to deprecation in OTLP profiles protocol.
-// Any pprofile.Unmarshaler implementation from OTLP (proto/json) MUST call this, and the gRPC Server implementation.
+// It is currently a no-op, so proto receive paths do not need to materialize
+// profile data just to call it.
 func MigrateProfiles(_ []*internal.ResourceProfiles) {}

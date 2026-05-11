@@ -82,7 +82,7 @@ type rawLogsServer struct {
 }
 
 func (s rawLogsServer) Export(ctx context.Context, request *internal.ExportLogsServiceRequest) (*internal.ExportLogsServiceResponse, error) {
-	request.DecodeAll()
+	request.EnsureDecoded()
 	otlp.MigrateLogs(request.ResourceLogs)
 	rsp, err := s.srv.Export(ctx, ExportRequest{orig: request, state: internal.NewState()})
 	return rsp.orig, err
