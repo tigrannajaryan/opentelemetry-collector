@@ -705,7 +705,7 @@ func BenchmarkTraceSizeBytes(b *testing.B) {
 	sizer := &ptrace.ProtoMarshaler{}
 	td := testdata.GenerateTraces(8192)
 	for b.Loop() {
-		fmt.Println(sizer.TracesSize(td))
+		_ = sizer.TracesSize(td)
 	}
 }
 

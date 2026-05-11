@@ -105,7 +105,10 @@ reassembling the parent payload.
 Modification tracking is local to each message tree. There is no global state.
 Generated setters and handwritten mutators call `MarkModified`; `MarkModified`
 clears wire bytes on the current message and every ancestor through the stored
-parent pointers.
+parent pointers. The lazy state records when this invalidation has already
+happened, so repeated `MarkModified` calls on the same message are a fast
+no-op. If the walk reaches an already-modified parent it stops there because
+that parent previously invalidated all of its ancestors.
 
 Repeated slice and map access is also tracked without global state. Public
 collection getters do not mark the owning message modified. Instead, generated
@@ -120,7 +123,10 @@ collection getters. Freshly constructed in-memory messages return nil so their
 wrappers keep ordinary equality semantics and avoid unnecessary modification
 checks. Lazily decoded messages, or decoded children that still have a lazy
 ancestor, return their `LazyMessage` so collection mutations can invalidate all
-affected ancestor bytes.
+affected ancestor bytes. Wrapper-level `markModified` helpers call
+`MarkModified` directly; `MarkModified` keeps the already-modified no-op path
+small and delegates the parent-chain walk to a slower helper only for the first
+invalidation.
 
 ## Eager materialization boundaries
 

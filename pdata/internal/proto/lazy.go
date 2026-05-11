@@ -10,9 +10,10 @@ package proto // import "go.opentelemetry.io/collector/pdata/internal/proto"
 // bytes and walks up the parent chain so a changed child also forces all parents
 // to reassemble their protobuf output.
 type LazyMessage struct {
-	parent  *LazyMessage
-	bytes   []byte
-	decoded bool
+	parent   *LazyMessage
+	bytes    []byte
+	decoded  bool
+	modified bool
 }
 
 // Init attaches protobuf wire bytes to a message and records its parent.
@@ -20,10 +21,17 @@ func (m *LazyMessage) Init(bytes []byte, parent *LazyMessage) {
 	m.bytes = bytes
 	m.parent = parent
 	m.decoded = false
+	m.modified = false
 }
 
 // SetParent updates the parent message used for modification propagation.
 func (m *LazyMessage) SetParent(parent *LazyMessage) {
+	if m.parent != parent {
+		// A previous modification only proves that the old parent chain was
+		// invalidated. Re-parenting needs a fresh propagation on the next
+		// mutation so the new ancestors cannot keep stale wire bytes.
+		m.modified = false
+	}
 	m.parent = parent
 }
 
@@ -46,7 +54,7 @@ func (m *LazyMessage) HasBytes() bool {
 // can be materialized independently while an ancestor keeps reusable bytes, and
 // mutating the child must still bubble to that ancestor.
 func (m *LazyMessage) MutationMarker() *LazyMessage {
-	if m.bytes == nil && m.parent == nil {
+	if m == nil || m.modified || (m.bytes == nil && m.parent == nil) {
 		return nil
 	}
 	return m
@@ -75,16 +83,32 @@ func (m *LazyMessage) MarkDecoded() {
 // intentionally does not decode first; mutating callers must materialize the
 // fields they are about to change before discarding the raw representation.
 //
-// The walk intentionally continues through parents whose own bytes are already
-// nil. A child can be fully materialized before it is changed while an ancestor
-// still has reusable bytes, and that ancestor must stop using its raw
-// representation as soon as any descendant changes.
+// The walk continues through unmodified parents whose own bytes are already nil.
+// A child can be fully materialized before it is changed while an ancestor still
+// has reusable bytes, and that ancestor must stop using its raw representation
+// as soon as any descendant changes. Once an already-modified parent is reached,
+// the walk stops because that parent previously invalidated all of its
+// ancestors.
 func (m *LazyMessage) MarkModified() {
+	// Keep the common already-modified and no-lazy-state paths in this tiny
+	// method so callers can inline the no-op case.
+	if m == nil || m.modified || (m.bytes == nil && m.parent == nil) {
+		return
+	}
+	m.markModified()
+}
+
+func (m *LazyMessage) markModified() {
+	m.modified = true
 	if m.bytes != nil {
 		m.bytes = nil
 		m.decoded = true
 	}
 	for parent := m.parent; parent != nil; parent = parent.parent {
+		if parent.modified || (parent.bytes == nil && parent.parent == nil) {
+			return
+		}
+		parent.modified = true
 		if parent.bytes != nil {
 			parent.bytes = nil
 			parent.decoded = true
