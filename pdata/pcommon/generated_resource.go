@@ -46,18 +46,23 @@ func (ms Resource) MoveTo(dest Resource) {
 
 // Attributes returns the Attributes associated with this Resource.
 func (ms Resource) Attributes() Map {
+	ms.getOrig().EnsureDecoded()
+	ms.getOrig().MarkModified()
 	return Map(internal.NewMapWrapper(&ms.getOrig().Attributes, ms.getState()))
 }
 
 // DroppedAttributesCount returns the droppedattributescount associated with this Resource.
 func (ms Resource) DroppedAttributesCount() uint32 {
+	ms.getOrig().EnsureDecoded()
 	return ms.getOrig().DroppedAttributesCount
 }
 
 // SetDroppedAttributesCount replaces the droppedattributescount associated with this Resource.
 func (ms Resource) SetDroppedAttributesCount(v uint32) {
 	ms.getState().AssertMutable()
+	ms.getOrig().EnsureDecoded()
 	ms.getOrig().DroppedAttributesCount = v
+	ms.getOrig().MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

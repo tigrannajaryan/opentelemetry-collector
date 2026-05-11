@@ -17,6 +17,7 @@ import (
 
 func (m *RequestContext) GetClientAddress() any {
 	if m != nil {
+		m.EnsureDecoded()
 		return m.ClientAddress
 	}
 	return nil
@@ -67,9 +68,10 @@ func (m *RequestContext) GetUnix() *UnixAddr {
 }
 
 type RequestContext struct {
-	ClientAddress  any
 	SpanContext    *SpanContext
 	ClientMetadata []KeyValue
+	ClientAddress  any
+	lazy           proto.LazyMessage
 }
 
 var (
@@ -161,6 +163,8 @@ func CopyRequestContext(dest, src *RequestContext) *RequestContext {
 	if dest == nil {
 		dest = NewRequestContext()
 	}
+	src.EnsureDecoded()
+	dest.EnsureDecoded()
 	dest.SpanContext = CopySpanContext(dest.SpanContext, src.SpanContext)
 
 	dest.ClientMetadata = CopyKeyValueSlice(dest.ClientMetadata, src.ClientMetadata)
@@ -213,6 +217,7 @@ func CopyRequestContext(dest, src *RequestContext) *RequestContext {
 	default:
 		dest.ClientAddress = nil
 	}
+	dest.MarkModified()
 
 	return dest
 }
@@ -269,8 +274,19 @@ func (orig *RequestContext) Reset() {
 	*orig = RequestContext{}
 }
 
+// LazyMessage returns the per-message protobuf lazy state.
+func (orig *RequestContext) LazyMessage() *proto.LazyMessage {
+	return &orig.lazy
+}
+
+// SetLazyParent records the parent lazy state used for modification bubbling.
+func (orig *RequestContext) SetLazyParent(parent *proto.LazyMessage) {
+	orig.lazy.SetParent(parent)
+}
+
 // MarshalJSON marshals all properties from the current struct to the destination stream.
 func (orig *RequestContext) MarshalJSON(dest *json.Stream) {
+	orig.EnsureDecoded()
 	dest.WriteObjectStart()
 	if orig.SpanContext != nil {
 		dest.WriteObjectField("spanContext")
@@ -313,6 +329,7 @@ func (orig *RequestContext) MarshalJSON(dest *json.Stream) {
 
 // UnmarshalJSON unmarshals all properties from the current struct from the source iterator.
 func (orig *RequestContext) UnmarshalJSON(iter *json.Iterator) {
+	orig.Reset()
 	for f := iter.ReadObject(); f != ""; f = iter.ReadObject() {
 		switch f {
 		case "spanContext", "span_context":
@@ -380,6 +397,10 @@ func (orig *RequestContext) UnmarshalJSON(iter *json.Iterator) {
 }
 
 func (orig *RequestContext) SizeProto() int {
+	if orig.lazy.HasBytes() {
+		return len(orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -420,6 +441,10 @@ func (orig *RequestContext) SizeProto() int {
 }
 
 func (orig *RequestContext) MarshalProto(buf []byte) int {
+	if orig.lazy.HasBytes() {
+		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
@@ -475,6 +500,67 @@ func (orig *RequestContext) MarshalProto(buf []byte) int {
 }
 
 func (orig *RequestContext) UnmarshalProto(buf []byte) error {
+	if err := validateRequestContextProto(buf); err != nil {
+		return err
+	}
+	orig.Reset()
+	orig.lazy.Init(buf, nil)
+	return nil
+}
+
+// EnsureDecoded materializes this message's direct fields from the attached
+// protobuf bytes. Embedded messages keep their own byte references and are
+// decoded by their getters.
+func (orig *RequestContext) EnsureDecoded() {
+	if orig == nil || orig.lazy.IsDecoded() {
+		return
+	}
+	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
+		// UnmarshalProto validates the full message tree before storing bytes,
+		// so a decode failure here means the message was mutated externally.
+		panic(err)
+	}
+	orig.lazy.MarkDecoded()
+}
+
+// MarkModified records that this message must be re-encoded from fields.
+func (orig *RequestContext) MarkModified() {
+	orig.EnsureDecoded()
+	orig.lazy.MarkModified()
+}
+
+// DecodeAll recursively materializes this message tree and clears lazy state.
+// It is primarily useful for tests and operations that require ordinary struct
+// equality instead of protobuf passthrough semantics.
+func (orig *RequestContext) DecodeAll() {
+	orig.EnsureDecoded()
+	if orig.SpanContext != nil {
+		orig.SpanContext.DecodeAll()
+	}
+	for i := range orig.ClientMetadata {
+		orig.ClientMetadata[i].DecodeAll()
+	}
+
+	if ov, ok := orig.ClientAddress.(*RequestContext_IP); ok && ov.IP != nil {
+		ov.IP.DecodeAll()
+	}
+
+	if ov, ok := orig.ClientAddress.(*RequestContext_TCP); ok && ov.TCP != nil {
+		ov.TCP.DecodeAll()
+	}
+
+	if ov, ok := orig.ClientAddress.(*RequestContext_UDP); ok && ov.UDP != nil {
+		ov.UDP.DecodeAll()
+	}
+
+	if ov, ok := orig.ClientAddress.(*RequestContext_Unix); ok && ov.Unix != nil {
+		ov.Unix.DecodeAll()
+	}
+
+	orig.lazy.Clear()
+}
+
+func validateRequestContextProto(buf []byte) error {
 	var err error
 	var fieldNum int32
 	var wireType proto.WireType
@@ -482,7 +568,120 @@ func (orig *RequestContext) UnmarshalProto(buf []byte) error {
 	l := len(buf)
 	pos := 0
 	for pos < l {
-		// If in a group parsing, move to the next tag.
+		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
+		if err != nil {
+			return err
+		}
+		switch fieldNum {
+
+		case 1:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field SpanContext", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateSpanContextProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 2:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field ClientMetadata", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateKeyValueProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 3:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field IP", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateIPAddrProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 4:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field TCP", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateTCPAddrProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 5:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field UDP", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateUDPAddrProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 6:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Unix", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateUnixAddrProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		default:
+			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (orig *RequestContext) decodeProto(buf []byte) error {
+	var err error
+	var fieldNum int32
+	var wireType proto.WireType
+
+	l := len(buf)
+	pos := 0
+	for pos < l {
 		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
 		if err != nil {
 			return err
@@ -501,10 +700,7 @@ func (orig *RequestContext) UnmarshalProto(buf []byte) error {
 			startPos := pos - length
 
 			orig.SpanContext = NewSpanContext()
-			err = orig.SpanContext.UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			orig.SpanContext.lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 2:
 			if wireType != proto.WireTypeLen {
@@ -517,10 +713,7 @@ func (orig *RequestContext) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.ClientMetadata = append(orig.ClientMetadata, KeyValue{})
-			err = orig.ClientMetadata[len(orig.ClientMetadata)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			(&orig.ClientMetadata[len(orig.ClientMetadata)-1]).lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 3:
 			if wireType != proto.WireTypeLen {
@@ -539,10 +732,7 @@ func (orig *RequestContext) UnmarshalProto(buf []byte) error {
 				ov = ProtoPoolRequestContext_IP.Get().(*RequestContext_IP)
 			}
 			ov.IP = NewIPAddr()
-			err = ov.IP.UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			ov.IP.lazy.Init(buf[startPos:pos], &orig.lazy)
 			orig.ClientAddress = ov
 
 		case 4:
@@ -562,10 +752,7 @@ func (orig *RequestContext) UnmarshalProto(buf []byte) error {
 				ov = ProtoPoolRequestContext_TCP.Get().(*RequestContext_TCP)
 			}
 			ov.TCP = NewTCPAddr()
-			err = ov.TCP.UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			ov.TCP.lazy.Init(buf[startPos:pos], &orig.lazy)
 			orig.ClientAddress = ov
 
 		case 5:
@@ -585,10 +772,7 @@ func (orig *RequestContext) UnmarshalProto(buf []byte) error {
 				ov = ProtoPoolRequestContext_UDP.Get().(*RequestContext_UDP)
 			}
 			ov.UDP = NewUDPAddr()
-			err = ov.UDP.UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			ov.UDP.lazy.Init(buf[startPos:pos], &orig.lazy)
 			orig.ClientAddress = ov
 
 		case 6:
@@ -608,10 +792,7 @@ func (orig *RequestContext) UnmarshalProto(buf []byte) error {
 				ov = ProtoPoolRequestContext_Unix.Get().(*RequestContext_Unix)
 			}
 			ov.Unix = NewUnixAddr()
-			err = ov.Unix.UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			ov.Unix.lazy.Init(buf[startPos:pos], &orig.lazy)
 			orig.ClientAddress = ov
 
 		default:

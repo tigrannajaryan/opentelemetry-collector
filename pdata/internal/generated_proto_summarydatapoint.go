@@ -21,6 +21,7 @@ import (
 type SummaryDataPoint struct {
 	Attributes        []KeyValue
 	QuantileValues    []*SummaryDataPointValueAtQuantile
+	lazy              proto.LazyMessage
 	StartTimeUnixNano uint64
 	TimeUnixNano      uint64
 	Count             uint64
@@ -79,6 +80,8 @@ func CopySummaryDataPoint(dest, src *SummaryDataPoint) *SummaryDataPoint {
 	if dest == nil {
 		dest = NewSummaryDataPoint()
 	}
+	src.EnsureDecoded()
+	dest.EnsureDecoded()
 	dest.Attributes = CopyKeyValueSlice(dest.Attributes, src.Attributes)
 
 	dest.StartTimeUnixNano = src.StartTimeUnixNano
@@ -88,6 +91,7 @@ func CopySummaryDataPoint(dest, src *SummaryDataPoint) *SummaryDataPoint {
 	dest.QuantileValues = CopySummaryDataPointValueAtQuantilePtrSlice(dest.QuantileValues, src.QuantileValues)
 
 	dest.Flags = src.Flags
+	dest.MarkModified()
 
 	return dest
 }
@@ -144,8 +148,19 @@ func (orig *SummaryDataPoint) Reset() {
 	*orig = SummaryDataPoint{}
 }
 
+// LazyMessage returns the per-message protobuf lazy state.
+func (orig *SummaryDataPoint) LazyMessage() *proto.LazyMessage {
+	return &orig.lazy
+}
+
+// SetLazyParent records the parent lazy state used for modification bubbling.
+func (orig *SummaryDataPoint) SetLazyParent(parent *proto.LazyMessage) {
+	orig.lazy.SetParent(parent)
+}
+
 // MarshalJSON marshals all properties from the current struct to the destination stream.
 func (orig *SummaryDataPoint) MarshalJSON(dest *json.Stream) {
+	orig.EnsureDecoded()
 	dest.WriteObjectStart()
 	if len(orig.Attributes) > 0 {
 		dest.WriteObjectField("attributes")
@@ -192,6 +207,7 @@ func (orig *SummaryDataPoint) MarshalJSON(dest *json.Stream) {
 
 // UnmarshalJSON unmarshals all properties from the current struct from the source iterator.
 func (orig *SummaryDataPoint) UnmarshalJSON(iter *json.Iterator) {
+	orig.Reset()
 	for f := iter.ReadObject(); f != ""; f = iter.ReadObject() {
 		switch f {
 		case "attributes":
@@ -223,6 +239,10 @@ func (orig *SummaryDataPoint) UnmarshalJSON(iter *json.Iterator) {
 }
 
 func (orig *SummaryDataPoint) SizeProto() int {
+	if orig.lazy.HasBytes() {
+		return len(orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -253,6 +273,10 @@ func (orig *SummaryDataPoint) SizeProto() int {
 }
 
 func (orig *SummaryDataPoint) MarshalProto(buf []byte) int {
+	if orig.lazy.HasBytes() {
+		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
@@ -303,6 +327,54 @@ func (orig *SummaryDataPoint) MarshalProto(buf []byte) int {
 }
 
 func (orig *SummaryDataPoint) UnmarshalProto(buf []byte) error {
+	if err := validateSummaryDataPointProto(buf); err != nil {
+		return err
+	}
+	orig.Reset()
+	orig.lazy.Init(buf, nil)
+	return nil
+}
+
+// EnsureDecoded materializes this message's direct fields from the attached
+// protobuf bytes. Embedded messages keep their own byte references and are
+// decoded by their getters.
+func (orig *SummaryDataPoint) EnsureDecoded() {
+	if orig == nil || orig.lazy.IsDecoded() {
+		return
+	}
+	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
+		// UnmarshalProto validates the full message tree before storing bytes,
+		// so a decode failure here means the message was mutated externally.
+		panic(err)
+	}
+	orig.lazy.MarkDecoded()
+}
+
+// MarkModified records that this message must be re-encoded from fields.
+func (orig *SummaryDataPoint) MarkModified() {
+	orig.EnsureDecoded()
+	orig.lazy.MarkModified()
+}
+
+// DecodeAll recursively materializes this message tree and clears lazy state.
+// It is primarily useful for tests and operations that require ordinary struct
+// equality instead of protobuf passthrough semantics.
+func (orig *SummaryDataPoint) DecodeAll() {
+	orig.EnsureDecoded()
+	for i := range orig.Attributes {
+		orig.Attributes[i].DecodeAll()
+	}
+
+	for i := range orig.QuantileValues {
+		if orig.QuantileValues[i] != nil {
+			orig.QuantileValues[i].DecodeAll()
+		}
+	}
+
+	orig.lazy.Clear()
+}
+
+func validateSummaryDataPointProto(buf []byte) error {
 	var err error
 	var fieldNum int32
 	var wireType proto.WireType
@@ -310,7 +382,104 @@ func (orig *SummaryDataPoint) UnmarshalProto(buf []byte) error {
 	l := len(buf)
 	pos := 0
 	for pos < l {
-		// If in a group parsing, move to the next tag.
+		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
+		if err != nil {
+			return err
+		}
+		switch fieldNum {
+
+		case 7:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Attributes", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateKeyValueProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 2:
+			if wireType != proto.WireTypeI64 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StartTimeUnixNano", wireType)
+			}
+			_, pos, err = proto.ConsumeI64(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 3:
+			if wireType != proto.WireTypeI64 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TimeUnixNano", wireType)
+			}
+			_, pos, err = proto.ConsumeI64(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 4:
+			if wireType != proto.WireTypeI64 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Count", wireType)
+			}
+			_, pos, err = proto.ConsumeI64(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 5:
+			if wireType != proto.WireTypeI64 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sum", wireType)
+			}
+			_, pos, err = proto.ConsumeI64(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 6:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field QuantileValues", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateSummaryDataPointValueAtQuantileProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 8:
+			if wireType != proto.WireTypeVarint {
+				return fmt.Errorf("proto: wrong wireType = %d for field Flags", wireType)
+			}
+			_, pos, err = proto.ConsumeVarint(buf, pos)
+			if err != nil {
+				return err
+			}
+		default:
+			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (orig *SummaryDataPoint) decodeProto(buf []byte) error {
+	var err error
+	var fieldNum int32
+	var wireType proto.WireType
+
+	l := len(buf)
+	pos := 0
+	for pos < l {
 		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
 		if err != nil {
 			return err
@@ -328,10 +497,7 @@ func (orig *SummaryDataPoint) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.Attributes = append(orig.Attributes, KeyValue{})
-			err = orig.Attributes[len(orig.Attributes)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			(&orig.Attributes[len(orig.Attributes)-1]).lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 2:
 			if wireType != proto.WireTypeI64 {
@@ -391,10 +557,7 @@ func (orig *SummaryDataPoint) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.QuantileValues = append(orig.QuantileValues, NewSummaryDataPointValueAtQuantile())
-			err = orig.QuantileValues[len(orig.QuantileValues)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			orig.QuantileValues[len(orig.QuantileValues)-1].lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 8:
 			if wireType != proto.WireTypeVarint {

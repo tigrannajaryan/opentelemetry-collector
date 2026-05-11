@@ -49,29 +49,37 @@ func (ms Sum) MoveTo(dest Sum) {
 
 // DataPoints returns the DataPoints associated with this Sum.
 func (ms Sum) DataPoints() NumberDataPointSlice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return newNumberDataPointSlice(&ms.orig.DataPoints, ms.state)
 }
 
 // AggregationTemporality returns the aggregationtemporality associated with this Sum.
 func (ms Sum) AggregationTemporality() AggregationTemporality {
+	ms.orig.EnsureDecoded()
 	return AggregationTemporality(ms.orig.AggregationTemporality)
 }
 
 // SetAggregationTemporality replaces the aggregationtemporality associated with this Sum.
 func (ms Sum) SetAggregationTemporality(v AggregationTemporality) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.AggregationTemporality = internal.AggregationTemporality(v)
+	ms.orig.MarkModified()
 }
 
 // IsMonotonic returns the ismonotonic associated with this Sum.
 func (ms Sum) IsMonotonic() bool {
+	ms.orig.EnsureDecoded()
 	return ms.orig.IsMonotonic
 }
 
 // SetIsMonotonic replaces the ismonotonic associated with this Sum.
 func (ms Sum) SetIsMonotonic(v bool) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.IsMonotonic = v
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

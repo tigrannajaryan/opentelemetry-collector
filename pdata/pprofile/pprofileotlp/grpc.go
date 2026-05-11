@@ -83,6 +83,7 @@ type rawProfilesServer struct {
 }
 
 func (s rawProfilesServer) Export(ctx context.Context, request *internal.ExportProfilesServiceRequest) (*internal.ExportProfilesServiceResponse, error) {
+	request.DecodeAll()
 	otlp.MigrateProfiles(request.ResourceProfiles)
 	rsp, err := s.srv.Export(ctx, ExportRequest{orig: request, state: internal.NewState()})
 	return rsp.orig, err

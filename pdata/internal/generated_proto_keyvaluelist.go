@@ -18,6 +18,7 @@ import (
 // KeyValueList is a list of KeyValue messages. We need KeyValueList as a message since oneof in AnyValue does not allow repeated fields.
 type KeyValueList struct {
 	Values []KeyValue
+	lazy   proto.LazyMessage
 }
 
 var (
@@ -66,7 +67,11 @@ func CopyKeyValueList(dest, src *KeyValueList) *KeyValueList {
 	if dest == nil {
 		dest = NewKeyValueList()
 	}
+	src.EnsureDecoded()
+	dest.EnsureDecoded()
 	dest.Values = CopyKeyValueSlice(dest.Values, src.Values)
+
+	dest.MarkModified()
 
 	return dest
 }
@@ -123,8 +128,19 @@ func (orig *KeyValueList) Reset() {
 	*orig = KeyValueList{}
 }
 
+// LazyMessage returns the per-message protobuf lazy state.
+func (orig *KeyValueList) LazyMessage() *proto.LazyMessage {
+	return &orig.lazy
+}
+
+// SetLazyParent records the parent lazy state used for modification bubbling.
+func (orig *KeyValueList) SetLazyParent(parent *proto.LazyMessage) {
+	orig.lazy.SetParent(parent)
+}
+
 // MarshalJSON marshals all properties from the current struct to the destination stream.
 func (orig *KeyValueList) MarshalJSON(dest *json.Stream) {
+	orig.EnsureDecoded()
 	dest.WriteObjectStart()
 	if len(orig.Values) > 0 {
 		dest.WriteObjectField("values")
@@ -141,6 +157,7 @@ func (orig *KeyValueList) MarshalJSON(dest *json.Stream) {
 
 // UnmarshalJSON unmarshals all properties from the current struct from the source iterator.
 func (orig *KeyValueList) UnmarshalJSON(iter *json.Iterator) {
+	orig.Reset()
 	for f := iter.ReadObject(); f != ""; f = iter.ReadObject() {
 		switch f {
 		case "values":
@@ -156,6 +173,10 @@ func (orig *KeyValueList) UnmarshalJSON(iter *json.Iterator) {
 }
 
 func (orig *KeyValueList) SizeProto() int {
+	if orig.lazy.HasBytes() {
+		return len(orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -167,6 +188,10 @@ func (orig *KeyValueList) SizeProto() int {
 }
 
 func (orig *KeyValueList) MarshalProto(buf []byte) int {
+	if orig.lazy.HasBytes() {
+		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
@@ -181,6 +206,47 @@ func (orig *KeyValueList) MarshalProto(buf []byte) int {
 }
 
 func (orig *KeyValueList) UnmarshalProto(buf []byte) error {
+	if err := validateKeyValueListProto(buf); err != nil {
+		return err
+	}
+	orig.Reset()
+	orig.lazy.Init(buf, nil)
+	return nil
+}
+
+// EnsureDecoded materializes this message's direct fields from the attached
+// protobuf bytes. Embedded messages keep their own byte references and are
+// decoded by their getters.
+func (orig *KeyValueList) EnsureDecoded() {
+	if orig == nil || orig.lazy.IsDecoded() {
+		return
+	}
+	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
+		// UnmarshalProto validates the full message tree before storing bytes,
+		// so a decode failure here means the message was mutated externally.
+		panic(err)
+	}
+	orig.lazy.MarkDecoded()
+}
+
+// MarkModified records that this message must be re-encoded from fields.
+func (orig *KeyValueList) MarkModified() {
+	orig.EnsureDecoded()
+	orig.lazy.MarkModified()
+}
+
+// DecodeAll recursively materializes this message tree and clears lazy state.
+// It is primarily useful for tests and operations that require ordinary struct
+// equality instead of protobuf passthrough semantics.
+func (orig *KeyValueList) DecodeAll() {
+	orig.EnsureDecoded()
+	for i := range orig.Values {
+		orig.Values[i].DecodeAll()
+	}
+	orig.lazy.Clear()
+}
+
+func validateKeyValueListProto(buf []byte) error {
 	var err error
 	var fieldNum int32
 	var wireType proto.WireType
@@ -188,7 +254,44 @@ func (orig *KeyValueList) UnmarshalProto(buf []byte) error {
 	l := len(buf)
 	pos := 0
 	for pos < l {
-		// If in a group parsing, move to the next tag.
+		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
+		if err != nil {
+			return err
+		}
+		switch fieldNum {
+
+		case 1:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Values", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateKeyValueProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+		default:
+			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (orig *KeyValueList) decodeProto(buf []byte) error {
+	var err error
+	var fieldNum int32
+	var wireType proto.WireType
+
+	l := len(buf)
+	pos := 0
+	for pos < l {
 		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
 		if err != nil {
 			return err
@@ -206,10 +309,7 @@ func (orig *KeyValueList) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.Values = append(orig.Values, KeyValue{})
-			err = orig.Values[len(orig.Values)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			(&orig.Values[len(orig.Values)-1]).lazy.Init(buf[startPos:pos], &orig.lazy)
 		default:
 			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
 			if err != nil {

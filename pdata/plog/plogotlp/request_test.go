@@ -88,6 +88,7 @@ func TestLogsProtoWireCompatibility(t *testing.T) {
 	ld2 := NewExportRequest()
 	err = ld2.UnmarshalProto(wire2)
 	require.NoError(t, err)
+	ld2.orig.DecodeAll()
 
 	// Now compare that the original and final ProtoBuf messages are the same.
 	// This proves that goproto and gogoproto marshaling/unmarshaling are wire compatible.

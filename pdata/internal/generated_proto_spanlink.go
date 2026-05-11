@@ -22,6 +22,7 @@ import (
 type SpanLink struct {
 	TraceState             string
 	Attributes             []KeyValue
+	lazy                   proto.LazyMessage
 	DroppedAttributesCount uint32
 	Flags                  uint32
 	TraceId                TraceID
@@ -78,6 +79,8 @@ func CopySpanLink(dest, src *SpanLink) *SpanLink {
 	if dest == nil {
 		dest = NewSpanLink()
 	}
+	src.EnsureDecoded()
+	dest.EnsureDecoded()
 	CopyTraceID(&dest.TraceId, &src.TraceId)
 
 	CopySpanID(&dest.SpanId, &src.SpanId)
@@ -87,6 +90,7 @@ func CopySpanLink(dest, src *SpanLink) *SpanLink {
 
 	dest.DroppedAttributesCount = src.DroppedAttributesCount
 	dest.Flags = src.Flags
+	dest.MarkModified()
 
 	return dest
 }
@@ -143,8 +147,19 @@ func (orig *SpanLink) Reset() {
 	*orig = SpanLink{}
 }
 
+// LazyMessage returns the per-message protobuf lazy state.
+func (orig *SpanLink) LazyMessage() *proto.LazyMessage {
+	return &orig.lazy
+}
+
+// SetLazyParent records the parent lazy state used for modification bubbling.
+func (orig *SpanLink) SetLazyParent(parent *proto.LazyMessage) {
+	orig.lazy.SetParent(parent)
+}
+
 // MarshalJSON marshals all properties from the current struct to the destination stream.
 func (orig *SpanLink) MarshalJSON(dest *json.Stream) {
+	orig.EnsureDecoded()
 	dest.WriteObjectStart()
 	if !orig.TraceId.IsEmpty() {
 		dest.WriteObjectField("traceId")
@@ -181,6 +196,7 @@ func (orig *SpanLink) MarshalJSON(dest *json.Stream) {
 
 // UnmarshalJSON unmarshals all properties from the current struct from the source iterator.
 func (orig *SpanLink) UnmarshalJSON(iter *json.Iterator) {
+	orig.Reset()
 	for f := iter.ReadObject(); f != ""; f = iter.ReadObject() {
 		switch f {
 		case "traceId", "trace_id":
@@ -208,6 +224,10 @@ func (orig *SpanLink) UnmarshalJSON(iter *json.Iterator) {
 }
 
 func (orig *SpanLink) SizeProto() int {
+	if orig.lazy.HasBytes() {
+		return len(orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -234,6 +254,10 @@ func (orig *SpanLink) SizeProto() int {
 }
 
 func (orig *SpanLink) MarshalProto(buf []byte) int {
+	if orig.lazy.HasBytes() {
+		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
@@ -279,6 +303,49 @@ func (orig *SpanLink) MarshalProto(buf []byte) int {
 }
 
 func (orig *SpanLink) UnmarshalProto(buf []byte) error {
+	if err := validateSpanLinkProto(buf); err != nil {
+		return err
+	}
+	orig.Reset()
+	orig.lazy.Init(buf, nil)
+	return nil
+}
+
+// EnsureDecoded materializes this message's direct fields from the attached
+// protobuf bytes. Embedded messages keep their own byte references and are
+// decoded by their getters.
+func (orig *SpanLink) EnsureDecoded() {
+	if orig == nil || orig.lazy.IsDecoded() {
+		return
+	}
+	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
+		// UnmarshalProto validates the full message tree before storing bytes,
+		// so a decode failure here means the message was mutated externally.
+		panic(err)
+	}
+	orig.lazy.MarkDecoded()
+}
+
+// MarkModified records that this message must be re-encoded from fields.
+func (orig *SpanLink) MarkModified() {
+	orig.EnsureDecoded()
+	orig.lazy.MarkModified()
+}
+
+// DecodeAll recursively materializes this message tree and clears lazy state.
+// It is primarily useful for tests and operations that require ordinary struct
+// equality instead of protobuf passthrough semantics.
+func (orig *SpanLink) DecodeAll() {
+	orig.EnsureDecoded()
+
+	for i := range orig.Attributes {
+		orig.Attributes[i].DecodeAll()
+	}
+
+	orig.lazy.Clear()
+}
+
+func validateSpanLinkProto(buf []byte) error {
 	var err error
 	var fieldNum int32
 	var wireType proto.WireType
@@ -286,7 +353,101 @@ func (orig *SpanLink) UnmarshalProto(buf []byte) error {
 	l := len(buf)
 	pos := 0
 	for pos < l {
-		// If in a group parsing, move to the next tag.
+		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
+		if err != nil {
+			return err
+		}
+		switch fieldNum {
+
+		case 1:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field TraceId", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateTraceIDProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 2:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field SpanId", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateSpanIDProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 3:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field TraceState", wireType)
+			}
+			_, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 4:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Attributes", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateKeyValueProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 5:
+			if wireType != proto.WireTypeVarint {
+				return fmt.Errorf("proto: wrong wireType = %d for field DroppedAttributesCount", wireType)
+			}
+			_, pos, err = proto.ConsumeVarint(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 6:
+			if wireType != proto.WireTypeI32 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Flags", wireType)
+			}
+			_, pos, err = proto.ConsumeI32(buf, pos)
+			if err != nil {
+				return err
+			}
+		default:
+			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (orig *SpanLink) decodeProto(buf []byte) error {
+	var err error
+	var fieldNum int32
+	var wireType proto.WireType
+
+	l := len(buf)
+	pos := 0
+	for pos < l {
 		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
 		if err != nil {
 			return err
@@ -348,10 +509,7 @@ func (orig *SpanLink) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.Attributes = append(orig.Attributes, KeyValue{})
-			err = orig.Attributes[len(orig.Attributes)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			(&orig.Attributes[len(orig.Attributes)-1]).lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 5:
 			if wireType != proto.WireTypeVarint {

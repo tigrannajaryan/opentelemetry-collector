@@ -50,24 +50,30 @@ func (ms Status) MoveTo(dest Status) {
 
 // Message returns the message associated with this Status.
 func (ms Status) Message() string {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Message
 }
 
 // SetMessage replaces the message associated with this Status.
 func (ms Status) SetMessage(v string) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Message = v
+	ms.orig.MarkModified()
 }
 
 // Code returns the code associated with this Status.
 func (ms Status) Code() StatusCode {
+	ms.orig.EnsureDecoded()
 	return StatusCode(ms.orig.Code)
 }
 
 // SetCode replaces the code associated with this Status.
 func (ms Status) SetCode(v StatusCode) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Code = internal.StatusCode(v)
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

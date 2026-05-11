@@ -50,38 +50,50 @@ func (ms Sample) MoveTo(dest Sample) {
 
 // StackIndex returns the stackindex associated with this Sample.
 func (ms Sample) StackIndex() int32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.StackIndex
 }
 
 // SetStackIndex replaces the stackindex associated with this Sample.
 func (ms Sample) SetStackIndex(v int32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.StackIndex = v
+	ms.orig.MarkModified()
 }
 
 // AttributeIndices returns the AttributeIndices associated with this Sample.
 func (ms Sample) AttributeIndices() pcommon.Int32Slice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.Int32Slice(internal.NewInt32SliceWrapper(&ms.orig.AttributeIndices, ms.state))
 }
 
 // LinkIndex returns the linkindex associated with this Sample.
 func (ms Sample) LinkIndex() int32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.LinkIndex
 }
 
 // SetLinkIndex replaces the linkindex associated with this Sample.
 func (ms Sample) SetLinkIndex(v int32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.LinkIndex = v
+	ms.orig.MarkModified()
 }
 
 // Values returns the Values associated with this Sample.
 func (ms Sample) Values() pcommon.Int64Slice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.Int64Slice(internal.NewInt64SliceWrapper(&ms.orig.Values, ms.state))
 }
 
 // TimestampsUnixNano returns the TimestampsUnixNano associated with this Sample.
 func (ms Sample) TimestampsUnixNano() pcommon.UInt64Slice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.UInt64Slice(internal.NewUInt64SliceWrapper(&ms.orig.TimestampsUnixNano, ms.state))
 }
 

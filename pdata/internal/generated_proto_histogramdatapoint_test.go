@@ -140,6 +140,7 @@ func TestMarshalAndUnmarshalProtoHistogramDataPointUnknown(t *testing.T) {
 	dest := NewHistogramDataPoint()
 	// message Test { required int64 field = 1313; } encoding { "field": "1234" }
 	require.NoError(t, dest.UnmarshalProto([]byte{0x88, 0x52, 0xD2, 0x09}))
+	dest.DecodeAll()
 	assert.Equal(t, NewHistogramDataPoint(), dest)
 }
 
@@ -159,6 +160,7 @@ func TestMarshalAndUnmarshalProtoHistogramDataPoint(t *testing.T) {
 
 				dest := NewHistogramDataPoint()
 				require.NoError(t, dest.UnmarshalProto(buf))
+				dest.DecodeAll()
 
 				assert.Equal(t, src, dest)
 				DeleteHistogramDataPoint(dest, true)
@@ -182,6 +184,7 @@ func TestMarshalAndUnmarshalProtoViaProtobufHistogramDataPoint(t *testing.T) {
 
 			dest := NewHistogramDataPoint()
 			require.NoError(t, dest.UnmarshalProto(goBuf))
+			dest.DecodeAll()
 			assert.Equal(t, src, dest)
 		})
 	}

@@ -52,40 +52,50 @@ func (ms Metric) MoveTo(dest Metric) {
 
 // Name returns the name associated with this Metric.
 func (ms Metric) Name() string {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Name
 }
 
 // SetName replaces the name associated with this Metric.
 func (ms Metric) SetName(v string) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Name = v
+	ms.orig.MarkModified()
 }
 
 // Description returns the description associated with this Metric.
 func (ms Metric) Description() string {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Description
 }
 
 // SetDescription replaces the description associated with this Metric.
 func (ms Metric) SetDescription(v string) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Description = v
+	ms.orig.MarkModified()
 }
 
 // Unit returns the unit associated with this Metric.
 func (ms Metric) Unit() string {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Unit
 }
 
 // SetUnit replaces the unit associated with this Metric.
 func (ms Metric) SetUnit(v string) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Unit = v
+	ms.orig.MarkModified()
 }
 
 // Type returns the type of the data for this Metric.
 // Calling this function on zero-initialized Metric will cause a panic.
 func (ms Metric) Type() MetricType {
+	ms.orig.EnsureDecoded()
 	switch ms.orig.Data.(type) {
 	case *internal.Metric_Gauge:
 		return MetricTypeGauge
@@ -108,6 +118,7 @@ func (ms Metric) Type() MetricType {
 //
 // Calling this function on zero-initialized Metric will cause a panic.
 func (ms Metric) Gauge() Gauge {
+	ms.orig.EnsureDecoded()
 	v, ok := ms.orig.GetData().(*internal.Metric_Gauge)
 	if !ok {
 		return Gauge{}
@@ -122,6 +133,7 @@ func (ms Metric) Gauge() Gauge {
 // Calling this function on zero-initialized Metric will cause a panic.
 func (ms Metric) SetEmptyGauge() Gauge {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	var ov *internal.Metric_Gauge
 	if !metadata.PdataUseProtoPoolingFeatureGate.IsEnabled() {
 		ov = &internal.Metric_Gauge{}
@@ -130,6 +142,7 @@ func (ms Metric) SetEmptyGauge() Gauge {
 	}
 	ov.Gauge = internal.NewGauge()
 	ms.orig.Data = ov
+	ms.orig.MarkModified()
 	return newGauge(ov.Gauge, ms.state)
 } // Sum returns the sum associated with this Metric.
 // Calling this function when Type() != MetricTypeSum returns an invalid
@@ -137,6 +150,7 @@ func (ms Metric) SetEmptyGauge() Gauge {
 //
 // Calling this function on zero-initialized Metric will cause a panic.
 func (ms Metric) Sum() Sum {
+	ms.orig.EnsureDecoded()
 	v, ok := ms.orig.GetData().(*internal.Metric_Sum)
 	if !ok {
 		return Sum{}
@@ -151,6 +165,7 @@ func (ms Metric) Sum() Sum {
 // Calling this function on zero-initialized Metric will cause a panic.
 func (ms Metric) SetEmptySum() Sum {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	var ov *internal.Metric_Sum
 	if !metadata.PdataUseProtoPoolingFeatureGate.IsEnabled() {
 		ov = &internal.Metric_Sum{}
@@ -159,6 +174,7 @@ func (ms Metric) SetEmptySum() Sum {
 	}
 	ov.Sum = internal.NewSum()
 	ms.orig.Data = ov
+	ms.orig.MarkModified()
 	return newSum(ov.Sum, ms.state)
 } // Histogram returns the histogram associated with this Metric.
 // Calling this function when Type() != MetricTypeHistogram returns an invalid
@@ -166,6 +182,7 @@ func (ms Metric) SetEmptySum() Sum {
 //
 // Calling this function on zero-initialized Metric will cause a panic.
 func (ms Metric) Histogram() Histogram {
+	ms.orig.EnsureDecoded()
 	v, ok := ms.orig.GetData().(*internal.Metric_Histogram)
 	if !ok {
 		return Histogram{}
@@ -180,6 +197,7 @@ func (ms Metric) Histogram() Histogram {
 // Calling this function on zero-initialized Metric will cause a panic.
 func (ms Metric) SetEmptyHistogram() Histogram {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	var ov *internal.Metric_Histogram
 	if !metadata.PdataUseProtoPoolingFeatureGate.IsEnabled() {
 		ov = &internal.Metric_Histogram{}
@@ -188,6 +206,7 @@ func (ms Metric) SetEmptyHistogram() Histogram {
 	}
 	ov.Histogram = internal.NewHistogram()
 	ms.orig.Data = ov
+	ms.orig.MarkModified()
 	return newHistogram(ov.Histogram, ms.state)
 } // ExponentialHistogram returns the exponentialhistogram associated with this Metric.
 // Calling this function when Type() != MetricTypeExponentialHistogram returns an invalid
@@ -195,6 +214,7 @@ func (ms Metric) SetEmptyHistogram() Histogram {
 //
 // Calling this function on zero-initialized Metric will cause a panic.
 func (ms Metric) ExponentialHistogram() ExponentialHistogram {
+	ms.orig.EnsureDecoded()
 	v, ok := ms.orig.GetData().(*internal.Metric_ExponentialHistogram)
 	if !ok {
 		return ExponentialHistogram{}
@@ -209,6 +229,7 @@ func (ms Metric) ExponentialHistogram() ExponentialHistogram {
 // Calling this function on zero-initialized Metric will cause a panic.
 func (ms Metric) SetEmptyExponentialHistogram() ExponentialHistogram {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	var ov *internal.Metric_ExponentialHistogram
 	if !metadata.PdataUseProtoPoolingFeatureGate.IsEnabled() {
 		ov = &internal.Metric_ExponentialHistogram{}
@@ -217,6 +238,7 @@ func (ms Metric) SetEmptyExponentialHistogram() ExponentialHistogram {
 	}
 	ov.ExponentialHistogram = internal.NewExponentialHistogram()
 	ms.orig.Data = ov
+	ms.orig.MarkModified()
 	return newExponentialHistogram(ov.ExponentialHistogram, ms.state)
 } // Summary returns the summary associated with this Metric.
 // Calling this function when Type() != MetricTypeSummary returns an invalid
@@ -224,6 +246,7 @@ func (ms Metric) SetEmptyExponentialHistogram() ExponentialHistogram {
 //
 // Calling this function on zero-initialized Metric will cause a panic.
 func (ms Metric) Summary() Summary {
+	ms.orig.EnsureDecoded()
 	v, ok := ms.orig.GetData().(*internal.Metric_Summary)
 	if !ok {
 		return Summary{}
@@ -238,6 +261,7 @@ func (ms Metric) Summary() Summary {
 // Calling this function on zero-initialized Metric will cause a panic.
 func (ms Metric) SetEmptySummary() Summary {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	var ov *internal.Metric_Summary
 	if !metadata.PdataUseProtoPoolingFeatureGate.IsEnabled() {
 		ov = &internal.Metric_Summary{}
@@ -246,11 +270,14 @@ func (ms Metric) SetEmptySummary() Summary {
 	}
 	ov.Summary = internal.NewSummary()
 	ms.orig.Data = ov
+	ms.orig.MarkModified()
 	return newSummary(ov.Summary, ms.state)
 }
 
 // Metadata returns the Metadata associated with this Metric.
 func (ms Metric) Metadata() pcommon.Map {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.Map(internal.NewMapWrapper(&ms.orig.Metadata, ms.state))
 }
 

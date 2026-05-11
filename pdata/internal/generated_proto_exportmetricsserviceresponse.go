@@ -18,6 +18,7 @@ import (
 // ExportResponse represents the response for gRPC/HTTP client/server.
 type ExportMetricsServiceResponse struct {
 	PartialSuccess ExportMetricsPartialSuccess
+	lazy           proto.LazyMessage
 }
 
 var (
@@ -64,7 +65,11 @@ func CopyExportMetricsServiceResponse(dest, src *ExportMetricsServiceResponse) *
 	if dest == nil {
 		dest = NewExportMetricsServiceResponse()
 	}
+	src.EnsureDecoded()
+	dest.EnsureDecoded()
 	CopyExportMetricsPartialSuccess(&dest.PartialSuccess, &src.PartialSuccess)
+
+	dest.MarkModified()
 
 	return dest
 }
@@ -121,8 +126,19 @@ func (orig *ExportMetricsServiceResponse) Reset() {
 	*orig = ExportMetricsServiceResponse{}
 }
 
+// LazyMessage returns the per-message protobuf lazy state.
+func (orig *ExportMetricsServiceResponse) LazyMessage() *proto.LazyMessage {
+	return &orig.lazy
+}
+
+// SetLazyParent records the parent lazy state used for modification bubbling.
+func (orig *ExportMetricsServiceResponse) SetLazyParent(parent *proto.LazyMessage) {
+	orig.lazy.SetParent(parent)
+}
+
 // MarshalJSON marshals all properties from the current struct to the destination stream.
 func (orig *ExportMetricsServiceResponse) MarshalJSON(dest *json.Stream) {
+	orig.EnsureDecoded()
 	dest.WriteObjectStart()
 	dest.WriteObjectField("partialSuccess")
 	orig.PartialSuccess.MarshalJSON(dest)
@@ -131,6 +147,7 @@ func (orig *ExportMetricsServiceResponse) MarshalJSON(dest *json.Stream) {
 
 // UnmarshalJSON unmarshals all properties from the current struct from the source iterator.
 func (orig *ExportMetricsServiceResponse) UnmarshalJSON(iter *json.Iterator) {
+	orig.Reset()
 	for f := iter.ReadObject(); f != ""; f = iter.ReadObject() {
 		switch f {
 		case "partialSuccess", "partial_success":
@@ -143,6 +160,10 @@ func (orig *ExportMetricsServiceResponse) UnmarshalJSON(iter *json.Iterator) {
 }
 
 func (orig *ExportMetricsServiceResponse) SizeProto() int {
+	if orig.lazy.HasBytes() {
+		return len(orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -152,6 +173,10 @@ func (orig *ExportMetricsServiceResponse) SizeProto() int {
 }
 
 func (orig *ExportMetricsServiceResponse) MarshalProto(buf []byte) int {
+	if orig.lazy.HasBytes() {
+		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
@@ -165,6 +190,45 @@ func (orig *ExportMetricsServiceResponse) MarshalProto(buf []byte) int {
 }
 
 func (orig *ExportMetricsServiceResponse) UnmarshalProto(buf []byte) error {
+	if err := validateExportMetricsServiceResponseProto(buf); err != nil {
+		return err
+	}
+	orig.Reset()
+	orig.lazy.Init(buf, nil)
+	return nil
+}
+
+// EnsureDecoded materializes this message's direct fields from the attached
+// protobuf bytes. Embedded messages keep their own byte references and are
+// decoded by their getters.
+func (orig *ExportMetricsServiceResponse) EnsureDecoded() {
+	if orig == nil || orig.lazy.IsDecoded() {
+		return
+	}
+	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
+		// UnmarshalProto validates the full message tree before storing bytes,
+		// so a decode failure here means the message was mutated externally.
+		panic(err)
+	}
+	orig.lazy.MarkDecoded()
+}
+
+// MarkModified records that this message must be re-encoded from fields.
+func (orig *ExportMetricsServiceResponse) MarkModified() {
+	orig.EnsureDecoded()
+	orig.lazy.MarkModified()
+}
+
+// DecodeAll recursively materializes this message tree and clears lazy state.
+// It is primarily useful for tests and operations that require ordinary struct
+// equality instead of protobuf passthrough semantics.
+func (orig *ExportMetricsServiceResponse) DecodeAll() {
+	orig.EnsureDecoded()
+	orig.PartialSuccess.DecodeAll()
+	orig.lazy.Clear()
+}
+
+func validateExportMetricsServiceResponseProto(buf []byte) error {
 	var err error
 	var fieldNum int32
 	var wireType proto.WireType
@@ -172,7 +236,44 @@ func (orig *ExportMetricsServiceResponse) UnmarshalProto(buf []byte) error {
 	l := len(buf)
 	pos := 0
 	for pos < l {
-		// If in a group parsing, move to the next tag.
+		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
+		if err != nil {
+			return err
+		}
+		switch fieldNum {
+
+		case 1:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field PartialSuccess", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateExportMetricsPartialSuccessProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+		default:
+			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (orig *ExportMetricsServiceResponse) decodeProto(buf []byte) error {
+	var err error
+	var fieldNum int32
+	var wireType proto.WireType
+
+	l := len(buf)
+	pos := 0
+	for pos < l {
 		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
 		if err != nil {
 			return err
@@ -190,10 +291,7 @@ func (orig *ExportMetricsServiceResponse) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 
-			err = orig.PartialSuccess.UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			(&orig.PartialSuccess).lazy.Init(buf[startPos:pos], &orig.lazy)
 		default:
 			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
 			if err != nil {

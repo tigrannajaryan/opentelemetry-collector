@@ -91,6 +91,7 @@ func decodeContext(ctx context.Context, rc *internal.RequestContext) context.Con
 	if rc == nil {
 		return ctx
 	}
+	rc.DecodeAll()
 	ctx = decodeSpanContext(ctx, rc.SpanContext)
 	metadataMap := decodeClientMetadata(rc.ClientMetadata)
 	clientAddress := decodeClientAddress(rc)

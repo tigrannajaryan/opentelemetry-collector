@@ -50,67 +50,86 @@ func (ms SummaryDataPoint) MoveTo(dest SummaryDataPoint) {
 
 // Attributes returns the Attributes associated with this SummaryDataPoint.
 func (ms SummaryDataPoint) Attributes() pcommon.Map {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.Map(internal.NewMapWrapper(&ms.orig.Attributes, ms.state))
 }
 
 // StartTimestamp returns the starttimestamp associated with this SummaryDataPoint.
 func (ms SummaryDataPoint) StartTimestamp() pcommon.Timestamp {
+	ms.orig.EnsureDecoded()
 	return pcommon.Timestamp(ms.orig.StartTimeUnixNano)
 }
 
 // SetStartTimestamp replaces the starttimestamp associated with this SummaryDataPoint.
 func (ms SummaryDataPoint) SetStartTimestamp(v pcommon.Timestamp) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.StartTimeUnixNano = uint64(v)
+	ms.orig.MarkModified()
 }
 
 // Timestamp returns the timestamp associated with this SummaryDataPoint.
 func (ms SummaryDataPoint) Timestamp() pcommon.Timestamp {
+	ms.orig.EnsureDecoded()
 	return pcommon.Timestamp(ms.orig.TimeUnixNano)
 }
 
 // SetTimestamp replaces the timestamp associated with this SummaryDataPoint.
 func (ms SummaryDataPoint) SetTimestamp(v pcommon.Timestamp) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.TimeUnixNano = uint64(v)
+	ms.orig.MarkModified()
 }
 
 // Count returns the count associated with this SummaryDataPoint.
 func (ms SummaryDataPoint) Count() uint64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Count
 }
 
 // SetCount replaces the count associated with this SummaryDataPoint.
 func (ms SummaryDataPoint) SetCount(v uint64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Count = v
+	ms.orig.MarkModified()
 }
 
 // Sum returns the sum associated with this SummaryDataPoint.
 func (ms SummaryDataPoint) Sum() float64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Sum
 }
 
 // SetSum replaces the sum associated with this SummaryDataPoint.
 func (ms SummaryDataPoint) SetSum(v float64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Sum = v
+	ms.orig.MarkModified()
 }
 
 // QuantileValues returns the QuantileValues associated with this SummaryDataPoint.
 func (ms SummaryDataPoint) QuantileValues() SummaryDataPointValueAtQuantileSlice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return newSummaryDataPointValueAtQuantileSlice(&ms.orig.QuantileValues, ms.state)
 }
 
 // Flags returns the flags associated with this SummaryDataPoint.
 func (ms SummaryDataPoint) Flags() DataPointFlags {
+	ms.orig.EnsureDecoded()
 	return DataPointFlags(ms.orig.Flags)
 }
 
 // SetFlags replaces the flags associated with this SummaryDataPoint.
 func (ms SummaryDataPoint) SetFlags(v DataPointFlags) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Flags = uint32(v)
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

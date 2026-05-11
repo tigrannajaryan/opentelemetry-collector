@@ -52,56 +52,71 @@ func (ms SpanLink) MoveTo(dest SpanLink) {
 
 // TraceID returns the traceid associated with this SpanLink.
 func (ms SpanLink) TraceID() pcommon.TraceID {
+	ms.orig.EnsureDecoded()
 	return pcommon.TraceID(ms.orig.TraceId)
 }
 
 // SetTraceID replaces the traceid associated with this SpanLink.
 func (ms SpanLink) SetTraceID(v pcommon.TraceID) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.TraceId = internal.TraceID(v)
+	ms.orig.MarkModified()
 }
 
 // SpanID returns the spanid associated with this SpanLink.
 func (ms SpanLink) SpanID() pcommon.SpanID {
+	ms.orig.EnsureDecoded()
 	return pcommon.SpanID(ms.orig.SpanId)
 }
 
 // SetSpanID replaces the spanid associated with this SpanLink.
 func (ms SpanLink) SetSpanID(v pcommon.SpanID) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.SpanId = internal.SpanID(v)
+	ms.orig.MarkModified()
 }
 
 // TraceState returns the tracestate associated with this SpanLink.
 func (ms SpanLink) TraceState() pcommon.TraceState {
+	ms.orig.EnsureDecoded()
 	return pcommon.TraceState(internal.NewTraceStateWrapper(&ms.orig.TraceState, ms.state))
 }
 
 // Attributes returns the Attributes associated with this SpanLink.
 func (ms SpanLink) Attributes() pcommon.Map {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.Map(internal.NewMapWrapper(&ms.orig.Attributes, ms.state))
 }
 
 // DroppedAttributesCount returns the droppedattributescount associated with this SpanLink.
 func (ms SpanLink) DroppedAttributesCount() uint32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.DroppedAttributesCount
 }
 
 // SetDroppedAttributesCount replaces the droppedattributescount associated with this SpanLink.
 func (ms SpanLink) SetDroppedAttributesCount(v uint32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.DroppedAttributesCount = v
+	ms.orig.MarkModified()
 }
 
 // Flags returns the flags associated with this SpanLink.
 func (ms SpanLink) Flags() uint32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Flags
 }
 
 // SetFlags replaces the flags associated with this SpanLink.
 func (ms SpanLink) SetFlags(v uint32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Flags = v
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

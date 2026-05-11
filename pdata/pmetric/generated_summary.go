@@ -49,6 +49,8 @@ func (ms Summary) MoveTo(dest Summary) {
 
 // DataPoints returns the DataPoints associated with this Summary.
 func (ms Summary) DataPoints() SummaryDataPointSlice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return newSummaryDataPointSlice(&ms.orig.DataPoints, ms.state)
 }
 

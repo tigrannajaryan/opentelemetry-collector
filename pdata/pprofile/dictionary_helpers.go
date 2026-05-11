@@ -33,27 +33,42 @@ func resolveProfilesReferences(profiles Profiles) {
 	}
 }
 
-// resolveKeyValueReferences resolves key_ref and string_value_ref in a KeyValue slice
-func resolveKeyValueReferences(dict ProfilesDictionary, kvs []internal.KeyValue) {
+// resolveKeyValueReferences resolves key_ref and string_value_ref in a KeyValue
+// slice. The helper reads internal generated structs directly, so it must
+// materialize each lazy message before inspecting fields and mark rewritten
+// messages modified so marshal does not copy stale wire bytes.
+func resolveKeyValueReferences(dict ProfilesDictionary, kvs []internal.KeyValue) bool {
+	modified := false
 	for i := range kvs {
 		kv := &kvs[i]
+		kv.EnsureDecoded()
+		kvModified := false
 		// Resolve key_ref if set
 		if kv.KeyStrindex >= 0 {
 			idx := int(kv.KeyStrindex)
 			if idx < dict.StringTable().Len() {
 				kv.Key = dict.StringTable().At(idx)
+				kvModified = true
 				// N.b. keep KeyStrindex set to optimize re-marshaling. This is
 				// technically a violation of the proto spec, but acceptable
 				// for the in-memory pdata API since keys are immutable.
 			}
 		}
 		// Resolve string_value_ref if set
-		resolveAnyValueReference(dict, &kv.Value)
+		if resolveAnyValueReference(dict, &kv.Value) {
+			kvModified = true
+		}
+		if kvModified {
+			kv.MarkModified()
+			modified = true
+		}
 	}
+	return modified
 }
 
 // resolveAnyValueReference resolves string_value_ref in an AnyValue
-func resolveAnyValueReference(dict ProfilesDictionary, anyValue *internal.AnyValue) {
+func resolveAnyValueReference(dict ProfilesDictionary, anyValue *internal.AnyValue) bool {
+	anyValue.EnsureDecoded()
 	if ref, ok := anyValue.Value.(*internal.AnyValue_StringValueStrindex); ok && ref.StringValueStrindex != 0 {
 		idx := int(ref.StringValueStrindex)
 		if idx >= 0 && idx < dict.StringTable().Len() {
@@ -66,14 +81,31 @@ func resolveAnyValueReference(dict ProfilesDictionary, anyValue *internal.AnyVal
 			}
 			ov.StringValue = str
 			anyValue.Value = ov
+			anyValue.MarkModified()
+			return true
 		}
 	} else if kvList, ok := anyValue.Value.(*internal.AnyValue_KvlistValue); ok && kvList.KvlistValue != nil {
-		resolveKeyValueReferences(dict, kvList.KvlistValue.Values)
+		kvList.KvlistValue.EnsureDecoded()
+		if resolveKeyValueReferences(dict, kvList.KvlistValue.Values) {
+			kvList.KvlistValue.MarkModified()
+			anyValue.MarkModified()
+			return true
+		}
 	} else if arrVal, ok := anyValue.Value.(*internal.AnyValue_ArrayValue); ok && arrVal.ArrayValue != nil {
+		arrVal.ArrayValue.EnsureDecoded()
+		modified := false
 		for i := 0; i < len(arrVal.ArrayValue.Values); i++ {
-			resolveAnyValueReference(dict, &arrVal.ArrayValue.Values[i])
+			if resolveAnyValueReference(dict, &arrVal.ArrayValue.Values[i]) {
+				modified = true
+			}
+		}
+		if modified {
+			arrVal.ArrayValue.MarkModified()
+			anyValue.MarkModified()
+			return true
 		}
 	}
+	return false
 }
 
 // convertProfilesToReferences walks through all profiles data before marshaling
@@ -115,27 +147,39 @@ func convertProfilesToReferences(profiles Profiles) {
 	}
 }
 
-// convertKeyValueToReferences converts string keys and values to references in a KeyValue slice
-func convertKeyValueToReferences(getStringIndex func(string) int32, kvs []internal.KeyValue) {
+// convertKeyValueToReferences converts string keys and values to references in a KeyValue slice.
+func convertKeyValueToReferences(getStringIndex func(string) int32, kvs []internal.KeyValue) bool {
+	modified := false
 	for i := range kvs {
 		kv := &kvs[i]
+		kv.EnsureDecoded()
+		kvModified := false
 
 		// Convert key to reference
 		if kv.Key != "" {
 			kv.KeyStrindex = getStringIndex(kv.Key)
 			kv.Key = ""
+			kvModified = true
 		}
 
 		// Convert string values to references
-		convertAnyValueToReference(getStringIndex, &kv.Value)
+		if convertAnyValueToReference(getStringIndex, &kv.Value) {
+			kvModified = true
+		}
+		if kvModified {
+			kv.MarkModified()
+			modified = true
+		}
 	}
+	return modified
 }
 
 // convertAnyValueToReference converts string values to string_value_ref
-func convertAnyValueToReference(getStringIndex func(string) int32, anyValue *internal.AnyValue) {
+func convertAnyValueToReference(getStringIndex func(string) int32, anyValue *internal.AnyValue) bool {
+	anyValue.EnsureDecoded()
 	// Skip if already a reference
 	if _, ok := anyValue.Value.(*internal.AnyValue_StringValueStrindex); ok {
-		return
+		return false
 	}
 
 	if strVal, ok := anyValue.Value.(*internal.AnyValue_StringValue); ok && strVal.StringValue != "" {
@@ -149,12 +193,29 @@ func convertAnyValueToReference(getStringIndex func(string) int32, anyValue *int
 		}
 		ov.StringValueStrindex = idx
 		anyValue.Value = ov
+		anyValue.MarkModified()
+		return true
 	} else if kvList, ok := anyValue.Value.(*internal.AnyValue_KvlistValue); ok && kvList.KvlistValue != nil {
-		convertKeyValueToReferences(getStringIndex, kvList.KvlistValue.Values)
+		kvList.KvlistValue.EnsureDecoded()
+		if convertKeyValueToReferences(getStringIndex, kvList.KvlistValue.Values) {
+			kvList.KvlistValue.MarkModified()
+			anyValue.MarkModified()
+			return true
+		}
 	} else if arrVal, ok := anyValue.Value.(*internal.AnyValue_ArrayValue); ok && arrVal.ArrayValue != nil {
+		arrVal.ArrayValue.EnsureDecoded()
 		// Recursively convert arrays
+		modified := false
 		for i := 0; i < len(arrVal.ArrayValue.Values); i++ {
-			convertAnyValueToReference(getStringIndex, &arrVal.ArrayValue.Values[i])
+			if convertAnyValueToReference(getStringIndex, &arrVal.ArrayValue.Values[i]) {
+				modified = true
+			}
+		}
+		if modified {
+			arrVal.ArrayValue.MarkModified()
+			anyValue.MarkModified()
+			return true
 		}
 	}
+	return false
 }

@@ -51,147 +51,188 @@ func (ms Span) MoveTo(dest Span) {
 
 // TraceID returns the traceid associated with this Span.
 func (ms Span) TraceID() pcommon.TraceID {
+	ms.orig.EnsureDecoded()
 	return pcommon.TraceID(ms.orig.TraceId)
 }
 
 // SetTraceID replaces the traceid associated with this Span.
 func (ms Span) SetTraceID(v pcommon.TraceID) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.TraceId = internal.TraceID(v)
+	ms.orig.MarkModified()
 }
 
 // SpanID returns the spanid associated with this Span.
 func (ms Span) SpanID() pcommon.SpanID {
+	ms.orig.EnsureDecoded()
 	return pcommon.SpanID(ms.orig.SpanId)
 }
 
 // SetSpanID replaces the spanid associated with this Span.
 func (ms Span) SetSpanID(v pcommon.SpanID) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.SpanId = internal.SpanID(v)
+	ms.orig.MarkModified()
 }
 
 // TraceState returns the tracestate associated with this Span.
 func (ms Span) TraceState() pcommon.TraceState {
+	ms.orig.EnsureDecoded()
 	return pcommon.TraceState(internal.NewTraceStateWrapper(&ms.orig.TraceState, ms.state))
 }
 
 // ParentSpanID returns the parentspanid associated with this Span.
 func (ms Span) ParentSpanID() pcommon.SpanID {
+	ms.orig.EnsureDecoded()
 	return pcommon.SpanID(ms.orig.ParentSpanId)
 }
 
 // SetParentSpanID replaces the parentspanid associated with this Span.
 func (ms Span) SetParentSpanID(v pcommon.SpanID) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.ParentSpanId = internal.SpanID(v)
+	ms.orig.MarkModified()
 }
 
 // Flags returns the flags associated with this Span.
 func (ms Span) Flags() uint32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Flags
 }
 
 // SetFlags replaces the flags associated with this Span.
 func (ms Span) SetFlags(v uint32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Flags = v
+	ms.orig.MarkModified()
 }
 
 // Name returns the name associated with this Span.
 func (ms Span) Name() string {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Name
 }
 
 // SetName replaces the name associated with this Span.
 func (ms Span) SetName(v string) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Name = v
+	ms.orig.MarkModified()
 }
 
 // Kind returns the kind associated with this Span.
 func (ms Span) Kind() SpanKind {
+	ms.orig.EnsureDecoded()
 	return SpanKind(ms.orig.Kind)
 }
 
 // SetKind replaces the kind associated with this Span.
 func (ms Span) SetKind(v SpanKind) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Kind = internal.SpanKind(v)
+	ms.orig.MarkModified()
 }
 
 // StartTimestamp returns the starttimestamp associated with this Span.
 func (ms Span) StartTimestamp() pcommon.Timestamp {
+	ms.orig.EnsureDecoded()
 	return pcommon.Timestamp(ms.orig.StartTimeUnixNano)
 }
 
 // SetStartTimestamp replaces the starttimestamp associated with this Span.
 func (ms Span) SetStartTimestamp(v pcommon.Timestamp) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.StartTimeUnixNano = uint64(v)
+	ms.orig.MarkModified()
 }
 
 // EndTimestamp returns the endtimestamp associated with this Span.
 func (ms Span) EndTimestamp() pcommon.Timestamp {
+	ms.orig.EnsureDecoded()
 	return pcommon.Timestamp(ms.orig.EndTimeUnixNano)
 }
 
 // SetEndTimestamp replaces the endtimestamp associated with this Span.
 func (ms Span) SetEndTimestamp(v pcommon.Timestamp) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.EndTimeUnixNano = uint64(v)
+	ms.orig.MarkModified()
 }
 
 // Attributes returns the Attributes associated with this Span.
 func (ms Span) Attributes() pcommon.Map {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.Map(internal.NewMapWrapper(&ms.orig.Attributes, ms.state))
 }
 
 // DroppedAttributesCount returns the droppedattributescount associated with this Span.
 func (ms Span) DroppedAttributesCount() uint32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.DroppedAttributesCount
 }
 
 // SetDroppedAttributesCount replaces the droppedattributescount associated with this Span.
 func (ms Span) SetDroppedAttributesCount(v uint32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.DroppedAttributesCount = v
+	ms.orig.MarkModified()
 }
 
 // Events returns the Events associated with this Span.
 func (ms Span) Events() SpanEventSlice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return newSpanEventSlice(&ms.orig.Events, ms.state)
 }
 
 // DroppedEventsCount returns the droppedeventscount associated with this Span.
 func (ms Span) DroppedEventsCount() uint32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.DroppedEventsCount
 }
 
 // SetDroppedEventsCount replaces the droppedeventscount associated with this Span.
 func (ms Span) SetDroppedEventsCount(v uint32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.DroppedEventsCount = v
+	ms.orig.MarkModified()
 }
 
 // Links returns the Links associated with this Span.
 func (ms Span) Links() SpanLinkSlice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return newSpanLinkSlice(&ms.orig.Links, ms.state)
 }
 
 // DroppedLinksCount returns the droppedlinkscount associated with this Span.
 func (ms Span) DroppedLinksCount() uint32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.DroppedLinksCount
 }
 
 // SetDroppedLinksCount replaces the droppedlinkscount associated with this Span.
 func (ms Span) SetDroppedLinksCount(v uint32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.DroppedLinksCount = v
+	ms.orig.MarkModified()
 }
 
 // Status returns the status associated with this Span.
 func (ms Span) Status() Status {
+	ms.orig.EnsureDecoded()
 	return newStatus(&ms.orig.Status, ms.state)
 }
 

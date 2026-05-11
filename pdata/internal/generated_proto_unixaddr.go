@@ -18,6 +18,7 @@ import (
 type UnixAddr struct {
 	Name string
 	Net  string
+	lazy proto.LazyMessage
 }
 
 var (
@@ -64,8 +65,11 @@ func CopyUnixAddr(dest, src *UnixAddr) *UnixAddr {
 	if dest == nil {
 		dest = NewUnixAddr()
 	}
+	src.EnsureDecoded()
+	dest.EnsureDecoded()
 	dest.Name = src.Name
 	dest.Net = src.Net
+	dest.MarkModified()
 
 	return dest
 }
@@ -122,8 +126,19 @@ func (orig *UnixAddr) Reset() {
 	*orig = UnixAddr{}
 }
 
+// LazyMessage returns the per-message protobuf lazy state.
+func (orig *UnixAddr) LazyMessage() *proto.LazyMessage {
+	return &orig.lazy
+}
+
+// SetLazyParent records the parent lazy state used for modification bubbling.
+func (orig *UnixAddr) SetLazyParent(parent *proto.LazyMessage) {
+	orig.lazy.SetParent(parent)
+}
+
 // MarshalJSON marshals all properties from the current struct to the destination stream.
 func (orig *UnixAddr) MarshalJSON(dest *json.Stream) {
+	orig.EnsureDecoded()
 	dest.WriteObjectStart()
 	if orig.Name != "" {
 		dest.WriteObjectField("name")
@@ -138,6 +153,7 @@ func (orig *UnixAddr) MarshalJSON(dest *json.Stream) {
 
 // UnmarshalJSON unmarshals all properties from the current struct from the source iterator.
 func (orig *UnixAddr) UnmarshalJSON(iter *json.Iterator) {
+	orig.Reset()
 	for f := iter.ReadObject(); f != ""; f = iter.ReadObject() {
 		switch f {
 		case "name":
@@ -151,6 +167,10 @@ func (orig *UnixAddr) UnmarshalJSON(iter *json.Iterator) {
 }
 
 func (orig *UnixAddr) SizeProto() int {
+	if orig.lazy.HasBytes() {
+		return len(orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -168,6 +188,10 @@ func (orig *UnixAddr) SizeProto() int {
 }
 
 func (orig *UnixAddr) MarshalProto(buf []byte) int {
+	if orig.lazy.HasBytes() {
+		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
@@ -191,6 +215,45 @@ func (orig *UnixAddr) MarshalProto(buf []byte) int {
 }
 
 func (orig *UnixAddr) UnmarshalProto(buf []byte) error {
+	if err := validateUnixAddrProto(buf); err != nil {
+		return err
+	}
+	orig.Reset()
+	orig.lazy.Init(buf, nil)
+	return nil
+}
+
+// EnsureDecoded materializes this message's direct fields from the attached
+// protobuf bytes. Embedded messages keep their own byte references and are
+// decoded by their getters.
+func (orig *UnixAddr) EnsureDecoded() {
+	if orig == nil || orig.lazy.IsDecoded() {
+		return
+	}
+	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
+		// UnmarshalProto validates the full message tree before storing bytes,
+		// so a decode failure here means the message was mutated externally.
+		panic(err)
+	}
+	orig.lazy.MarkDecoded()
+}
+
+// MarkModified records that this message must be re-encoded from fields.
+func (orig *UnixAddr) MarkModified() {
+	orig.EnsureDecoded()
+	orig.lazy.MarkModified()
+}
+
+// DecodeAll recursively materializes this message tree and clears lazy state.
+// It is primarily useful for tests and operations that require ordinary struct
+// equality instead of protobuf passthrough semantics.
+func (orig *UnixAddr) DecodeAll() {
+	orig.EnsureDecoded()
+
+	orig.lazy.Clear()
+}
+
+func validateUnixAddrProto(buf []byte) error {
 	var err error
 	var fieldNum int32
 	var wireType proto.WireType
@@ -198,7 +261,47 @@ func (orig *UnixAddr) UnmarshalProto(buf []byte) error {
 	l := len(buf)
 	pos := 0
 	for pos < l {
-		// If in a group parsing, move to the next tag.
+		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
+		if err != nil {
+			return err
+		}
+		switch fieldNum {
+
+		case 1:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			_, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 2:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Net", wireType)
+			}
+			_, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+		default:
+			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (orig *UnixAddr) decodeProto(buf []byte) error {
+	var err error
+	var fieldNum int32
+	var wireType proto.WireType
+
+	l := len(buf)
+	pos := 0
+	for pos < l {
 		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
 		if err != nil {
 			return err

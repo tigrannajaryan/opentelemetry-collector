@@ -49,35 +49,44 @@ func (ms Line) MoveTo(dest Line) {
 
 // FunctionIndex returns the functionindex associated with this Line.
 func (ms Line) FunctionIndex() int32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.FunctionIndex
 }
 
 // SetFunctionIndex replaces the functionindex associated with this Line.
 func (ms Line) SetFunctionIndex(v int32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.FunctionIndex = v
+	ms.orig.MarkModified()
 }
 
 // Line returns the line associated with this Line.
 func (ms Line) Line() int64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Line
 }
 
 // SetLine replaces the line associated with this Line.
 func (ms Line) SetLine(v int64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Line = v
+	ms.orig.MarkModified()
 }
 
 // Column returns the column associated with this Line.
 func (ms Line) Column() int64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Column
 }
 
 // SetColumn replaces the column associated with this Line.
 func (ms Line) SetColumn(v int64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Column = v
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

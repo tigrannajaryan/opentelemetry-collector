@@ -49,6 +49,8 @@ func (ms Gauge) MoveTo(dest Gauge) {
 
 // DataPoints returns the DataPoints associated with this Gauge.
 func (ms Gauge) DataPoints() NumberDataPointSlice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return newNumberDataPointSlice(&ms.orig.DataPoints, ms.state)
 }
 

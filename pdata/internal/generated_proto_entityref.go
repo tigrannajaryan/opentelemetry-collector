@@ -20,6 +20,7 @@ type EntityRef struct {
 	Type            string
 	IdKeys          []string
 	DescriptionKeys []string
+	lazy            proto.LazyMessage
 }
 
 var (
@@ -66,11 +67,15 @@ func CopyEntityRef(dest, src *EntityRef) *EntityRef {
 	if dest == nil {
 		dest = NewEntityRef()
 	}
+	src.EnsureDecoded()
+	dest.EnsureDecoded()
 	dest.SchemaUrl = src.SchemaUrl
 	dest.Type = src.Type
 	dest.IdKeys = append(dest.IdKeys[:0], src.IdKeys...)
 
 	dest.DescriptionKeys = append(dest.DescriptionKeys[:0], src.DescriptionKeys...)
+
+	dest.MarkModified()
 
 	return dest
 }
@@ -127,8 +132,19 @@ func (orig *EntityRef) Reset() {
 	*orig = EntityRef{}
 }
 
+// LazyMessage returns the per-message protobuf lazy state.
+func (orig *EntityRef) LazyMessage() *proto.LazyMessage {
+	return &orig.lazy
+}
+
+// SetLazyParent records the parent lazy state used for modification bubbling.
+func (orig *EntityRef) SetLazyParent(parent *proto.LazyMessage) {
+	orig.lazy.SetParent(parent)
+}
+
 // MarshalJSON marshals all properties from the current struct to the destination stream.
 func (orig *EntityRef) MarshalJSON(dest *json.Stream) {
+	orig.EnsureDecoded()
 	dest.WriteObjectStart()
 	if orig.SchemaUrl != "" {
 		dest.WriteObjectField("schemaUrl")
@@ -165,6 +181,7 @@ func (orig *EntityRef) MarshalJSON(dest *json.Stream) {
 
 // UnmarshalJSON unmarshals all properties from the current struct from the source iterator.
 func (orig *EntityRef) UnmarshalJSON(iter *json.Iterator) {
+	orig.Reset()
 	for f := iter.ReadObject(); f != ""; f = iter.ReadObject() {
 		switch f {
 		case "schemaUrl", "schema_url":
@@ -188,6 +205,10 @@ func (orig *EntityRef) UnmarshalJSON(iter *json.Iterator) {
 }
 
 func (orig *EntityRef) SizeProto() int {
+	if orig.lazy.HasBytes() {
+		return len(orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -213,6 +234,10 @@ func (orig *EntityRef) SizeProto() int {
 }
 
 func (orig *EntityRef) MarshalProto(buf []byte) int {
+	if orig.lazy.HasBytes() {
+		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
@@ -252,6 +277,45 @@ func (orig *EntityRef) MarshalProto(buf []byte) int {
 }
 
 func (orig *EntityRef) UnmarshalProto(buf []byte) error {
+	if err := validateEntityRefProto(buf); err != nil {
+		return err
+	}
+	orig.Reset()
+	orig.lazy.Init(buf, nil)
+	return nil
+}
+
+// EnsureDecoded materializes this message's direct fields from the attached
+// protobuf bytes. Embedded messages keep their own byte references and are
+// decoded by their getters.
+func (orig *EntityRef) EnsureDecoded() {
+	if orig == nil || orig.lazy.IsDecoded() {
+		return
+	}
+	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
+		// UnmarshalProto validates the full message tree before storing bytes,
+		// so a decode failure here means the message was mutated externally.
+		panic(err)
+	}
+	orig.lazy.MarkDecoded()
+}
+
+// MarkModified records that this message must be re-encoded from fields.
+func (orig *EntityRef) MarkModified() {
+	orig.EnsureDecoded()
+	orig.lazy.MarkModified()
+}
+
+// DecodeAll recursively materializes this message tree and clears lazy state.
+// It is primarily useful for tests and operations that require ordinary struct
+// equality instead of protobuf passthrough semantics.
+func (orig *EntityRef) DecodeAll() {
+	orig.EnsureDecoded()
+
+	orig.lazy.Clear()
+}
+
+func validateEntityRefProto(buf []byte) error {
 	var err error
 	var fieldNum int32
 	var wireType proto.WireType
@@ -259,7 +323,65 @@ func (orig *EntityRef) UnmarshalProto(buf []byte) error {
 	l := len(buf)
 	pos := 0
 	for pos < l {
-		// If in a group parsing, move to the next tag.
+		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
+		if err != nil {
+			return err
+		}
+		switch fieldNum {
+
+		case 1:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field SchemaUrl", wireType)
+			}
+			_, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 2:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
+			}
+			_, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 3:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field IdKeys", wireType)
+			}
+			_, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 4:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field DescriptionKeys", wireType)
+			}
+			_, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+		default:
+			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (orig *EntityRef) decodeProto(buf []byte) error {
+	var err error
+	var fieldNum int32
+	var wireType proto.WireType
+
+	l := len(buf)
+	pos := 0
+	for pos < l {
 		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
 		if err != nil {
 			return err

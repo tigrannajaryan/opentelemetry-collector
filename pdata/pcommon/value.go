@@ -152,9 +152,11 @@ func (v Value) getState() *internal.State {
 // FromRaw sets the value from the given raw value.
 // Calling this function on zero-initialized Value will cause a panic.
 func (v Value) FromRaw(iv any) error {
+	v.getOrig().EnsureDecoded()
 	switch tv := iv.(type) {
 	case nil:
 		v.getOrig().Value = nil
+		v.getOrig().MarkModified()
 	case string:
 		v.SetStr(tv)
 	case int:
@@ -198,6 +200,7 @@ func (v Value) FromRaw(iv any) error {
 // Type returns the type of the value for this Value.
 // Calling this function on zero-initialized Value will cause a panic.
 func (v Value) Type() ValueType {
+	v.getOrig().EnsureDecoded()
 	switch v.getOrig().Value.(type) {
 	case *internal.AnyValue_StringValue:
 		return ValueTypeStr
@@ -221,24 +224,28 @@ func (v Value) Type() ValueType {
 // The shorter name is used instead of String to avoid implementing fmt.Stringer interface.
 // If the Type() is not ValueTypeStr then returns empty string.
 func (v Value) Str() string {
+	v.getOrig().EnsureDecoded()
 	return v.getOrig().GetStringValue()
 }
 
 // Int returns the int64 value associated with this Value.
 // If the Type() is not ValueTypeInt then returns int64(0).
 func (v Value) Int() int64 {
+	v.getOrig().EnsureDecoded()
 	return v.getOrig().GetIntValue()
 }
 
 // Double returns the float64 value associated with this Value.
 // If the Type() is not ValueTypeDouble then returns float64(0).
 func (v Value) Double() float64 {
+	v.getOrig().EnsureDecoded()
 	return v.getOrig().GetDoubleValue()
 }
 
 // Bool returns the bool value associated with this Value.
 // If the Type() is not ValueTypeBool then returns false.
 func (v Value) Bool() bool {
+	v.getOrig().EnsureDecoded()
 	return v.getOrig().GetBoolValue()
 }
 
@@ -246,10 +253,12 @@ func (v Value) Bool() bool {
 // If the function is called on zero-initialized Value or if the Type() is not ValueTypeMap
 // then it returns an invalid map. Note that using such map can cause panic.
 func (v Value) Map() Map {
+	v.getOrig().EnsureDecoded()
 	kvlist := v.getOrig().GetKvlistValue()
 	if kvlist == nil {
 		return Map{}
 	}
+	kvlist.MarkModified()
 	return newMap(&kvlist.Values, internal.GetValueState(internal.ValueWrapper(v)))
 }
 
@@ -257,10 +266,12 @@ func (v Value) Map() Map {
 // If the function is called on zero-initialized Value or if the Type() is not ValueTypeSlice
 // then returns an invalid slice. Note that using such slice can cause panic.
 func (v Value) Slice() Slice {
+	v.getOrig().EnsureDecoded()
 	arr := v.getOrig().GetArrayValue()
 	if arr == nil {
 		return Slice{}
 	}
+	arr.MarkModified()
 	return newSlice(&arr.Values, internal.GetValueState(internal.ValueWrapper(v)))
 }
 
@@ -268,10 +279,12 @@ func (v Value) Slice() Slice {
 // If the function is called on zero-initialized Value or if the Type() is not ValueTypeBytes
 // then returns an invalid ByteSlice object. Note that using such slice can cause panic.
 func (v Value) Bytes() ByteSlice {
+	v.getOrig().EnsureDecoded()
 	bv, ok := v.getOrig().GetValue().(*internal.AnyValue_BytesValue)
 	if !ok {
 		return ByteSlice{}
 	}
+	v.getOrig().MarkModified()
 	return ByteSlice(internal.NewByteSliceWrapper(&bv.BytesValue, internal.GetValueState(internal.ValueWrapper(v))))
 }
 
@@ -282,11 +295,13 @@ func (v Value) Bytes() ByteSlice {
 // Calling this function on zero-initialized Value will cause a panic.
 func (v Value) SetStr(sv string) {
 	v.getState().AssertMutable()
+	v.getOrig().EnsureDecoded()
 	// Delete everything but the AnyValue object itself.
 	internal.DeleteAnyValue(v.getOrig(), false)
 	ov := internal.NewAnyValueStringValue()
 	ov.StringValue = sv
 	v.getOrig().Value = ov
+	v.getOrig().MarkModified()
 }
 
 // SetInt replaces the int64 value associated with this Value,
@@ -294,11 +309,13 @@ func (v Value) SetStr(sv string) {
 // Calling this function on zero-initialized Value will cause a panic.
 func (v Value) SetInt(iv int64) {
 	v.getState().AssertMutable()
+	v.getOrig().EnsureDecoded()
 	// Delete everything but the AnyValue object itself.
 	internal.DeleteAnyValue(v.getOrig(), false)
 	ov := internal.NewAnyValueIntValue()
 	ov.IntValue = iv
 	v.getOrig().Value = ov
+	v.getOrig().MarkModified()
 }
 
 // SetDouble replaces the float64 value associated with this Value,
@@ -306,11 +323,13 @@ func (v Value) SetInt(iv int64) {
 // Calling this function on zero-initialized Value will cause a panic.
 func (v Value) SetDouble(dv float64) {
 	v.getState().AssertMutable()
+	v.getOrig().EnsureDecoded()
 	// Delete everything but the AnyValue object itself.
 	internal.DeleteAnyValue(v.getOrig(), false)
 	ov := internal.NewAnyValueDoubleValue()
 	ov.DoubleValue = dv
 	v.getOrig().Value = ov
+	v.getOrig().MarkModified()
 }
 
 // SetBool replaces the bool value associated with this Value,
@@ -318,21 +337,25 @@ func (v Value) SetDouble(dv float64) {
 // Calling this function on zero-initialized Value will cause a panic.
 func (v Value) SetBool(bv bool) {
 	v.getState().AssertMutable()
+	v.getOrig().EnsureDecoded()
 	// Delete everything but the AnyValue object itself.
 	internal.DeleteAnyValue(v.getOrig(), false)
 	ov := internal.NewAnyValueBoolValue()
 	ov.BoolValue = bv
 	v.getOrig().Value = ov
+	v.getOrig().MarkModified()
 }
 
 // SetEmptyBytes sets value to an empty byte slice and returns it.
 // Calling this function on zero-initialized Value will cause a panic.
 func (v Value) SetEmptyBytes() ByteSlice {
 	v.getState().AssertMutable()
+	v.getOrig().EnsureDecoded()
 	// Delete everything but the AnyValue object itself.
 	internal.DeleteAnyValue(v.getOrig(), false)
 	bv := internal.NewAnyValueBytesValue()
 	v.getOrig().Value = bv
+	v.getOrig().MarkModified()
 	return ByteSlice(internal.NewByteSliceWrapper(&bv.BytesValue, v.getState()))
 }
 
@@ -340,11 +363,13 @@ func (v Value) SetEmptyBytes() ByteSlice {
 // Calling this function on zero-initialized Value will cause a panic.
 func (v Value) SetEmptyMap() Map {
 	v.getState().AssertMutable()
+	v.getOrig().EnsureDecoded()
 	// Delete everything but the AnyValue object itself.
 	internal.DeleteAnyValue(v.getOrig(), false)
 	ov := internal.NewAnyValueKvlistValue()
 	ov.KvlistValue = internal.NewKeyValueList()
 	v.getOrig().Value = ov
+	v.getOrig().MarkModified()
 	return newMap(&ov.KvlistValue.Values, v.getState())
 }
 
@@ -352,11 +377,13 @@ func (v Value) SetEmptyMap() Map {
 // Calling this function on zero-initialized Value will cause a panic.
 func (v Value) SetEmptySlice() Slice {
 	v.getState().AssertMutable()
+	v.getOrig().EnsureDecoded()
 	// Delete everything but the AnyValue object itself.
 	internal.DeleteAnyValue(v.getOrig(), false)
 	ov := internal.NewAnyValueArrayValue()
 	ov.ArrayValue = internal.NewArrayValue()
 	v.getOrig().Value = ov
+	v.getOrig().MarkModified()
 	return newSlice(&ov.ArrayValue.Values, v.getState())
 }
 
@@ -366,19 +393,26 @@ func (v Value) SetEmptySlice() Slice {
 func (v Value) MoveTo(dest Value) {
 	v.getState().AssertMutable()
 	dest.getState().AssertMutable()
+	v.getOrig().EnsureDecoded()
+	dest.getOrig().EnsureDecoded()
 	// If they point to the same data, they are the same, nothing to do.
 	if v.getOrig() == dest.getOrig() {
 		return
 	}
 	*dest.getOrig() = *v.getOrig()
 	v.getOrig().Value = nil
+	dest.getOrig().MarkModified()
+	v.getOrig().MarkModified()
 }
 
 // CopyTo copies the Value instance overriding the destination.
 // Calling this function on zero-initialized Value will cause a panic.
 func (v Value) CopyTo(dest Value) {
 	dest.getState().AssertMutable()
+	v.getOrig().EnsureDecoded()
+	dest.getOrig().EnsureDecoded()
 	internal.CopyAnyValue(dest.getOrig(), v.getOrig())
+	dest.getOrig().MarkModified()
 }
 
 // AsString converts an OTLP Value object of any type to its equivalent string

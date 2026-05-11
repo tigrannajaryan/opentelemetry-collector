@@ -50,23 +50,29 @@ func (ms ResourceProfiles) MoveTo(dest ResourceProfiles) {
 
 // Resource returns the resource associated with this ResourceProfiles.
 func (ms ResourceProfiles) Resource() pcommon.Resource {
+	ms.orig.EnsureDecoded()
 	return pcommon.Resource(internal.NewResourceWrapper(&ms.orig.Resource, ms.state))
 }
 
 // ScopeProfiles returns the ScopeProfiles associated with this ResourceProfiles.
 func (ms ResourceProfiles) ScopeProfiles() ScopeProfilesSlice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return newScopeProfilesSlice(&ms.orig.ScopeProfiles, ms.state)
 }
 
 // SchemaUrl returns the schemaurl associated with this ResourceProfiles.
 func (ms ResourceProfiles) SchemaUrl() string {
+	ms.orig.EnsureDecoded()
 	return ms.orig.SchemaUrl
 }
 
 // SetSchemaUrl replaces the schemaurl associated with this ResourceProfiles.
 func (ms ResourceProfiles) SetSchemaUrl(v string) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.SchemaUrl = v
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

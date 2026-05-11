@@ -140,6 +140,7 @@ func TestMarshalAndUnmarshalProtoSummaryDataPointUnknown(t *testing.T) {
 	dest := NewSummaryDataPoint()
 	// message Test { required int64 field = 1313; } encoding { "field": "1234" }
 	require.NoError(t, dest.UnmarshalProto([]byte{0x88, 0x52, 0xD2, 0x09}))
+	dest.DecodeAll()
 	assert.Equal(t, NewSummaryDataPoint(), dest)
 }
 
@@ -159,6 +160,7 @@ func TestMarshalAndUnmarshalProtoSummaryDataPoint(t *testing.T) {
 
 				dest := NewSummaryDataPoint()
 				require.NoError(t, dest.UnmarshalProto(buf))
+				dest.DecodeAll()
 
 				assert.Equal(t, src, dest)
 				DeleteSummaryDataPoint(dest, true)
@@ -182,6 +184,7 @@ func TestMarshalAndUnmarshalProtoViaProtobufSummaryDataPoint(t *testing.T) {
 
 			dest := NewSummaryDataPoint()
 			require.NoError(t, dest.UnmarshalProto(goBuf))
+			dest.DecodeAll()
 			assert.Equal(t, src, dest)
 		})
 	}

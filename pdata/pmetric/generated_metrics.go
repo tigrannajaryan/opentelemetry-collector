@@ -47,6 +47,8 @@ func (ms Metrics) MoveTo(dest Metrics) {
 
 // ResourceMetrics returns the ResourceMetrics associated with this Metrics.
 func (ms Metrics) ResourceMetrics() ResourceMetricsSlice {
+	ms.getOrig().EnsureDecoded()
+	ms.getOrig().MarkModified()
 	return newResourceMetricsSlice(&ms.getOrig().ResourceMetrics, ms.getState())
 }
 

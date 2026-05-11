@@ -19,6 +19,7 @@ import (
 type Resource struct {
 	Attributes             []KeyValue
 	EntityRefs             []*EntityRef
+	lazy                   proto.LazyMessage
 	DroppedAttributesCount uint32
 }
 
@@ -72,10 +73,14 @@ func CopyResource(dest, src *Resource) *Resource {
 	if dest == nil {
 		dest = NewResource()
 	}
+	src.EnsureDecoded()
+	dest.EnsureDecoded()
 	dest.Attributes = CopyKeyValueSlice(dest.Attributes, src.Attributes)
 
 	dest.DroppedAttributesCount = src.DroppedAttributesCount
 	dest.EntityRefs = CopyEntityRefPtrSlice(dest.EntityRefs, src.EntityRefs)
+
+	dest.MarkModified()
 
 	return dest
 }
@@ -132,8 +137,19 @@ func (orig *Resource) Reset() {
 	*orig = Resource{}
 }
 
+// LazyMessage returns the per-message protobuf lazy state.
+func (orig *Resource) LazyMessage() *proto.LazyMessage {
+	return &orig.lazy
+}
+
+// SetLazyParent records the parent lazy state used for modification bubbling.
+func (orig *Resource) SetLazyParent(parent *proto.LazyMessage) {
+	orig.lazy.SetParent(parent)
+}
+
 // MarshalJSON marshals all properties from the current struct to the destination stream.
 func (orig *Resource) MarshalJSON(dest *json.Stream) {
+	orig.EnsureDecoded()
 	dest.WriteObjectStart()
 	if len(orig.Attributes) > 0 {
 		dest.WriteObjectField("attributes")
@@ -164,6 +180,7 @@ func (orig *Resource) MarshalJSON(dest *json.Stream) {
 
 // UnmarshalJSON unmarshals all properties from the current struct from the source iterator.
 func (orig *Resource) UnmarshalJSON(iter *json.Iterator) {
+	orig.Reset()
 	for f := iter.ReadObject(); f != ""; f = iter.ReadObject() {
 		switch f {
 		case "attributes":
@@ -187,6 +204,10 @@ func (orig *Resource) UnmarshalJSON(iter *json.Iterator) {
 }
 
 func (orig *Resource) SizeProto() int {
+	if orig.lazy.HasBytes() {
+		return len(orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -205,6 +226,10 @@ func (orig *Resource) SizeProto() int {
 }
 
 func (orig *Resource) MarshalProto(buf []byte) int {
+	if orig.lazy.HasBytes() {
+		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
@@ -231,6 +256,53 @@ func (orig *Resource) MarshalProto(buf []byte) int {
 }
 
 func (orig *Resource) UnmarshalProto(buf []byte) error {
+	if err := validateResourceProto(buf); err != nil {
+		return err
+	}
+	orig.Reset()
+	orig.lazy.Init(buf, nil)
+	return nil
+}
+
+// EnsureDecoded materializes this message's direct fields from the attached
+// protobuf bytes. Embedded messages keep their own byte references and are
+// decoded by their getters.
+func (orig *Resource) EnsureDecoded() {
+	if orig == nil || orig.lazy.IsDecoded() {
+		return
+	}
+	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
+		// UnmarshalProto validates the full message tree before storing bytes,
+		// so a decode failure here means the message was mutated externally.
+		panic(err)
+	}
+	orig.lazy.MarkDecoded()
+}
+
+// MarkModified records that this message must be re-encoded from fields.
+func (orig *Resource) MarkModified() {
+	orig.EnsureDecoded()
+	orig.lazy.MarkModified()
+}
+
+// DecodeAll recursively materializes this message tree and clears lazy state.
+// It is primarily useful for tests and operations that require ordinary struct
+// equality instead of protobuf passthrough semantics.
+func (orig *Resource) DecodeAll() {
+	orig.EnsureDecoded()
+	for i := range orig.Attributes {
+		orig.Attributes[i].DecodeAll()
+	}
+
+	for i := range orig.EntityRefs {
+		if orig.EntityRefs[i] != nil {
+			orig.EntityRefs[i].DecodeAll()
+		}
+	}
+	orig.lazy.Clear()
+}
+
+func validateResourceProto(buf []byte) error {
 	var err error
 	var fieldNum int32
 	var wireType proto.WireType
@@ -238,7 +310,68 @@ func (orig *Resource) UnmarshalProto(buf []byte) error {
 	l := len(buf)
 	pos := 0
 	for pos < l {
-		// If in a group parsing, move to the next tag.
+		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
+		if err != nil {
+			return err
+		}
+		switch fieldNum {
+
+		case 1:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Attributes", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateKeyValueProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 2:
+			if wireType != proto.WireTypeVarint {
+				return fmt.Errorf("proto: wrong wireType = %d for field DroppedAttributesCount", wireType)
+			}
+			_, pos, err = proto.ConsumeVarint(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 3:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field EntityRefs", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateEntityRefProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+		default:
+			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (orig *Resource) decodeProto(buf []byte) error {
+	var err error
+	var fieldNum int32
+	var wireType proto.WireType
+
+	l := len(buf)
+	pos := 0
+	for pos < l {
 		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
 		if err != nil {
 			return err
@@ -256,10 +389,7 @@ func (orig *Resource) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.Attributes = append(orig.Attributes, KeyValue{})
-			err = orig.Attributes[len(orig.Attributes)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			(&orig.Attributes[len(orig.Attributes)-1]).lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 2:
 			if wireType != proto.WireTypeVarint {
@@ -283,10 +413,7 @@ func (orig *Resource) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.EntityRefs = append(orig.EntityRefs, NewEntityRef())
-			err = orig.EntityRefs[len(orig.EntityRefs)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			orig.EntityRefs[len(orig.EntityRefs)-1].lazy.Init(buf[startPos:pos], &orig.lazy)
 		default:
 			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
 			if err != nil {

@@ -11,25 +11,31 @@ import (
 
 const optionalPrimitiveAccessorsTemplate = `// {{ .fieldName }} returns the {{ .lowerFieldName }} associated with this {{ .structName }}.
 func (ms {{ .structName }}) {{ .fieldName }}() {{ .returnType }} {
+	ms.orig.EnsureDecoded()
 	return ms.orig.{{ .fieldName }}
 }
 
 // Has{{ .fieldName }} returns true if the {{ .structName }} contains a
 // {{ .fieldName }} value otherwise.
 func (ms {{ .structName }}) Has{{ .fieldName }}() bool {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Has{{ .fieldName }}()
 }
 
 // Set{{ .fieldName }} replaces the {{ .lowerFieldName }} associated with this {{ .structName }}.
 func (ms {{ .structName }}) Set{{ .fieldName }}(v {{ .returnType }}) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Set{{ .fieldName }}(v)
+	ms.orig.MarkModified()
 }
 
 // Remove{{ .fieldName }} removes the {{ .lowerFieldName }} associated with this {{ .structName }}.
 func (ms {{ .structName }}) Remove{{ .fieldName }}() {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Remove{{ .fieldName }}()
+	ms.orig.MarkModified()
 }`
 
 const optionalPrimitiveAccessorsTestTemplate = `func Test{{ .structName }}_{{ .fieldName }}(t *testing.T) {

@@ -49,24 +49,30 @@ func (ms SummaryDataPointValueAtQuantile) MoveTo(dest SummaryDataPointValueAtQua
 
 // Quantile returns the quantile associated with this SummaryDataPointValueAtQuantile.
 func (ms SummaryDataPointValueAtQuantile) Quantile() float64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Quantile
 }
 
 // SetQuantile replaces the quantile associated with this SummaryDataPointValueAtQuantile.
 func (ms SummaryDataPointValueAtQuantile) SetQuantile(v float64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Quantile = v
+	ms.orig.MarkModified()
 }
 
 // Value returns the value associated with this SummaryDataPointValueAtQuantile.
 func (ms SummaryDataPointValueAtQuantile) Value() float64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Value
 }
 
 // SetValue replaces the value associated with this SummaryDataPointValueAtQuantile.
 func (ms SummaryDataPointValueAtQuantile) SetValue(v float64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Value = v
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

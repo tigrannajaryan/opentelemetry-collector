@@ -17,9 +17,10 @@ import (
 
 // ScopeProfiles is a collection of profiles from a LibraryInstrumentation.
 type ScopeProfiles struct {
-	SchemaUrl string
-	Profiles  []*Profile
 	Scope     InstrumentationScope
+	Profiles  []*Profile
+	SchemaUrl string
+	lazy      proto.LazyMessage
 }
 
 var (
@@ -70,11 +71,14 @@ func CopyScopeProfiles(dest, src *ScopeProfiles) *ScopeProfiles {
 	if dest == nil {
 		dest = NewScopeProfiles()
 	}
+	src.EnsureDecoded()
+	dest.EnsureDecoded()
 	CopyInstrumentationScope(&dest.Scope, &src.Scope)
 
 	dest.Profiles = CopyProfilePtrSlice(dest.Profiles, src.Profiles)
 
 	dest.SchemaUrl = src.SchemaUrl
+	dest.MarkModified()
 
 	return dest
 }
@@ -131,8 +135,19 @@ func (orig *ScopeProfiles) Reset() {
 	*orig = ScopeProfiles{}
 }
 
+// LazyMessage returns the per-message protobuf lazy state.
+func (orig *ScopeProfiles) LazyMessage() *proto.LazyMessage {
+	return &orig.lazy
+}
+
+// SetLazyParent records the parent lazy state used for modification bubbling.
+func (orig *ScopeProfiles) SetLazyParent(parent *proto.LazyMessage) {
+	orig.lazy.SetParent(parent)
+}
+
 // MarshalJSON marshals all properties from the current struct to the destination stream.
 func (orig *ScopeProfiles) MarshalJSON(dest *json.Stream) {
+	orig.EnsureDecoded()
 	dest.WriteObjectStart()
 	dest.WriteObjectField("scope")
 	orig.Scope.MarshalJSON(dest)
@@ -155,6 +170,7 @@ func (orig *ScopeProfiles) MarshalJSON(dest *json.Stream) {
 
 // UnmarshalJSON unmarshals all properties from the current struct from the source iterator.
 func (orig *ScopeProfiles) UnmarshalJSON(iter *json.Iterator) {
+	orig.Reset()
 	for f := iter.ReadObject(); f != ""; f = iter.ReadObject() {
 		switch f {
 		case "scope":
@@ -175,6 +191,10 @@ func (orig *ScopeProfiles) UnmarshalJSON(iter *json.Iterator) {
 }
 
 func (orig *ScopeProfiles) SizeProto() int {
+	if orig.lazy.HasBytes() {
+		return len(orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -193,6 +213,10 @@ func (orig *ScopeProfiles) SizeProto() int {
 }
 
 func (orig *ScopeProfiles) MarshalProto(buf []byte) int {
+	if orig.lazy.HasBytes() {
+		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
@@ -221,6 +245,51 @@ func (orig *ScopeProfiles) MarshalProto(buf []byte) int {
 }
 
 func (orig *ScopeProfiles) UnmarshalProto(buf []byte) error {
+	if err := validateScopeProfilesProto(buf); err != nil {
+		return err
+	}
+	orig.Reset()
+	orig.lazy.Init(buf, nil)
+	return nil
+}
+
+// EnsureDecoded materializes this message's direct fields from the attached
+// protobuf bytes. Embedded messages keep their own byte references and are
+// decoded by their getters.
+func (orig *ScopeProfiles) EnsureDecoded() {
+	if orig == nil || orig.lazy.IsDecoded() {
+		return
+	}
+	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
+		// UnmarshalProto validates the full message tree before storing bytes,
+		// so a decode failure here means the message was mutated externally.
+		panic(err)
+	}
+	orig.lazy.MarkDecoded()
+}
+
+// MarkModified records that this message must be re-encoded from fields.
+func (orig *ScopeProfiles) MarkModified() {
+	orig.EnsureDecoded()
+	orig.lazy.MarkModified()
+}
+
+// DecodeAll recursively materializes this message tree and clears lazy state.
+// It is primarily useful for tests and operations that require ordinary struct
+// equality instead of protobuf passthrough semantics.
+func (orig *ScopeProfiles) DecodeAll() {
+	orig.EnsureDecoded()
+	orig.Scope.DecodeAll()
+	for i := range orig.Profiles {
+		if orig.Profiles[i] != nil {
+			orig.Profiles[i].DecodeAll()
+		}
+	}
+
+	orig.lazy.Clear()
+}
+
+func validateScopeProfilesProto(buf []byte) error {
 	var err error
 	var fieldNum int32
 	var wireType proto.WireType
@@ -228,7 +297,68 @@ func (orig *ScopeProfiles) UnmarshalProto(buf []byte) error {
 	l := len(buf)
 	pos := 0
 	for pos < l {
-		// If in a group parsing, move to the next tag.
+		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
+		if err != nil {
+			return err
+		}
+		switch fieldNum {
+
+		case 1:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Scope", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateInstrumentationScopeProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 2:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Profiles", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateProfileProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 3:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field SchemaUrl", wireType)
+			}
+			_, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+		default:
+			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (orig *ScopeProfiles) decodeProto(buf []byte) error {
+	var err error
+	var fieldNum int32
+	var wireType proto.WireType
+
+	l := len(buf)
+	pos := 0
+	for pos < l {
 		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
 		if err != nil {
 			return err
@@ -246,10 +376,7 @@ func (orig *ScopeProfiles) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 
-			err = orig.Scope.UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			(&orig.Scope).lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 2:
 			if wireType != proto.WireTypeLen {
@@ -262,10 +389,7 @@ func (orig *ScopeProfiles) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.Profiles = append(orig.Profiles, NewProfile())
-			err = orig.Profiles[len(orig.Profiles)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			orig.Profiles[len(orig.Profiles)-1].lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 3:
 			if wireType != proto.WireTypeLen {

@@ -49,24 +49,30 @@ func (ms ValueType) MoveTo(dest ValueType) {
 
 // TypeStrindex returns the typestrindex associated with this ValueType.
 func (ms ValueType) TypeStrindex() int32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.TypeStrindex
 }
 
 // SetTypeStrindex replaces the typestrindex associated with this ValueType.
 func (ms ValueType) SetTypeStrindex(v int32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.TypeStrindex = v
+	ms.orig.MarkModified()
 }
 
 // UnitStrindex returns the unitstrindex associated with this ValueType.
 func (ms ValueType) UnitStrindex() int32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.UnitStrindex
 }
 
 // SetUnitStrindex replaces the unitstrindex associated with this ValueType.
 func (ms ValueType) SetUnitStrindex(v int32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.UnitStrindex = v
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

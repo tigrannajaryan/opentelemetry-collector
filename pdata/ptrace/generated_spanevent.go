@@ -51,40 +51,51 @@ func (ms SpanEvent) MoveTo(dest SpanEvent) {
 
 // Timestamp returns the timestamp associated with this SpanEvent.
 func (ms SpanEvent) Timestamp() pcommon.Timestamp {
+	ms.orig.EnsureDecoded()
 	return pcommon.Timestamp(ms.orig.TimeUnixNano)
 }
 
 // SetTimestamp replaces the timestamp associated with this SpanEvent.
 func (ms SpanEvent) SetTimestamp(v pcommon.Timestamp) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.TimeUnixNano = uint64(v)
+	ms.orig.MarkModified()
 }
 
 // Name returns the name associated with this SpanEvent.
 func (ms SpanEvent) Name() string {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Name
 }
 
 // SetName replaces the name associated with this SpanEvent.
 func (ms SpanEvent) SetName(v string) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Name = v
+	ms.orig.MarkModified()
 }
 
 // Attributes returns the Attributes associated with this SpanEvent.
 func (ms SpanEvent) Attributes() pcommon.Map {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.Map(internal.NewMapWrapper(&ms.orig.Attributes, ms.state))
 }
 
 // DroppedAttributesCount returns the droppedattributescount associated with this SpanEvent.
 func (ms SpanEvent) DroppedAttributesCount() uint32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.DroppedAttributesCount
 }
 
 // SetDroppedAttributesCount replaces the droppedattributescount associated with this SpanEvent.
 func (ms SpanEvent) SetDroppedAttributesCount(v uint32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.DroppedAttributesCount = v
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

@@ -12,12 +12,14 @@ import (
 
 const oneOfPrimitiveAccessorsTemplate = `// {{ .accessorFieldName }} returns the {{ .lowerFieldName }} associated with this {{ .structName }}.
 func (ms {{ .structName }}) {{ .accessorFieldName }}() {{ .returnType }} {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Get{{ .originFieldName }}()
 }
 
 // Set{{ .accessorFieldName }} replaces the {{ .lowerFieldName }} associated with this {{ .structName }}.
 func (ms {{ .structName }}) Set{{ .accessorFieldName }}(v {{ .returnType }}) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	var ov *internal.{{ .originStructType }}
 	if !metadata.PdataUseProtoPoolingFeatureGate.IsEnabled() {
 		ov = &internal.{{ .originStructType }}{}
@@ -26,6 +28,7 @@ func (ms {{ .structName }}) Set{{ .accessorFieldName }}(v {{ .returnType }}) {
 	}
 	ov.{{ .originFieldName }} = v
 	ms.orig.{{ .originOneOfFieldName }} = ov
+	ms.orig.MarkModified()
 }`
 
 const oneOfPrimitiveAccessorTestTemplate = `func Test{{ .structName }}_{{ .accessorFieldName }}(t *testing.T) {

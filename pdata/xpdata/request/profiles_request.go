@@ -33,5 +33,6 @@ func UnmarshalProfiles(buf []byte) (context.Context, pprofile.Profiles, error) {
 	if err := pr.UnmarshalProto(buf); err != nil {
 		return ctx, pprofile.Profiles{}, fmt.Errorf("failed to unmarshal profiles request: %w", err)
 	}
+	pr.DecodeAll()
 	return decodeContext(ctx, pr.RequestContext), pprofile.Profiles(internal.ProfilesFromProto(pr.ProfilesData)), nil
 }

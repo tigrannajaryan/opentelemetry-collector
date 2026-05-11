@@ -65,6 +65,7 @@ func (m Map) EnsureCapacity(capacity int) {
 func (m Map) Get(key string) (Value, bool) {
 	for i := range *m.getOrig() {
 		akv := &(*m.getOrig())[i]
+		akv.EnsureDecoded()
 		if akv.Key == key {
 			return newValue(&akv.Value, m.getState()), true
 		}
@@ -78,6 +79,7 @@ func (m Map) Remove(key string) bool {
 	m.getState().AssertMutable()
 	for i := range *m.getOrig() {
 		akv := &(*m.getOrig())[i]
+		akv.EnsureDecoded()
 		if akv.Key == key {
 			*akv = (*m.getOrig())[len(*m.getOrig())-1]
 			*m.getOrig() = (*m.getOrig())[:len(*m.getOrig())-1]
@@ -92,6 +94,7 @@ func (m Map) RemoveIf(f func(string, Value) bool) {
 	m.getState().AssertMutable()
 	newLen := 0
 	for i := 0; i < len(*m.getOrig()); i++ {
+		(*m.getOrig())[i].EnsureDecoded()
 		if f((*m.getOrig())[i].Key, newValue(&(*m.getOrig())[i].Value, m.getState())) {
 			(*m.getOrig())[i] = internal.KeyValue{}
 			continue
@@ -241,6 +244,7 @@ func (m Map) Len() int {
 func (m Map) Range(f func(k string, v Value) bool) {
 	for i := range *m.getOrig() {
 		kv := &(*m.getOrig())[i]
+		kv.EnsureDecoded()
 		if !f(kv.Key, Value(internal.NewValueWrapper(&kv.Value, m.getState()))) {
 			break
 		}
@@ -256,6 +260,7 @@ func (m Map) All() iter.Seq2[string, Value] {
 	return func(yield func(string, Value) bool) {
 		for i := range *m.getOrig() {
 			kv := &(*m.getOrig())[i]
+			kv.EnsureDecoded()
 			if !yield(kv.Key, Value(internal.NewValueWrapper(&kv.Value, m.getState()))) {
 				return
 			}

@@ -33,5 +33,6 @@ func UnmarshalLogs(buf []byte) (context.Context, plog.Logs, error) {
 	if err := lr.UnmarshalProto(buf); err != nil {
 		return ctx, plog.Logs{}, fmt.Errorf("failed to unmarshal logs request: %w", err)
 	}
+	lr.DecodeAll()
 	return decodeContext(ctx, lr.RequestContext), plog.Logs(internal.LogsFromProto(lr.LogsData)), nil
 }

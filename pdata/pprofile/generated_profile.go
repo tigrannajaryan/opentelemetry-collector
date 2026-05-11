@@ -50,92 +50,118 @@ func (ms Profile) MoveTo(dest Profile) {
 
 // SampleType returns the sampletype associated with this Profile.
 func (ms Profile) SampleType() ValueType {
+	ms.orig.EnsureDecoded()
 	return newValueType(&ms.orig.SampleType, ms.state)
 }
 
 // Samples returns the Samples associated with this Profile.
 func (ms Profile) Samples() SampleSlice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return newSampleSlice(&ms.orig.Samples, ms.state)
 }
 
 // Time returns the time associated with this Profile.
 func (ms Profile) Time() pcommon.Timestamp {
+	ms.orig.EnsureDecoded()
 	return pcommon.Timestamp(ms.orig.TimeUnixNano)
 }
 
 // SetTime replaces the time associated with this Profile.
 func (ms Profile) SetTime(v pcommon.Timestamp) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.TimeUnixNano = uint64(v)
+	ms.orig.MarkModified()
 }
 
 // DurationNano returns the durationnano associated with this Profile.
 func (ms Profile) DurationNano() uint64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.DurationNano
 }
 
 // SetDurationNano replaces the durationnano associated with this Profile.
 func (ms Profile) SetDurationNano(v uint64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.DurationNano = v
+	ms.orig.MarkModified()
 }
 
 // PeriodType returns the periodtype associated with this Profile.
 func (ms Profile) PeriodType() ValueType {
+	ms.orig.EnsureDecoded()
 	return newValueType(&ms.orig.PeriodType, ms.state)
 }
 
 // Period returns the period associated with this Profile.
 func (ms Profile) Period() int64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Period
 }
 
 // SetPeriod replaces the period associated with this Profile.
 func (ms Profile) SetPeriod(v int64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Period = v
+	ms.orig.MarkModified()
 }
 
 // ProfileID returns the profileid associated with this Profile.
 func (ms Profile) ProfileID() ProfileID {
+	ms.orig.EnsureDecoded()
 	return ProfileID(ms.orig.ProfileId)
 }
 
 // SetProfileID replaces the profileid associated with this Profile.
 func (ms Profile) SetProfileID(v ProfileID) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.ProfileId = internal.ProfileID(v)
+	ms.orig.MarkModified()
 }
 
 // DroppedAttributesCount returns the droppedattributescount associated with this Profile.
 func (ms Profile) DroppedAttributesCount() uint32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.DroppedAttributesCount
 }
 
 // SetDroppedAttributesCount replaces the droppedattributescount associated with this Profile.
 func (ms Profile) SetDroppedAttributesCount(v uint32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.DroppedAttributesCount = v
+	ms.orig.MarkModified()
 }
 
 // OriginalPayloadFormat returns the originalpayloadformat associated with this Profile.
 func (ms Profile) OriginalPayloadFormat() string {
+	ms.orig.EnsureDecoded()
 	return ms.orig.OriginalPayloadFormat
 }
 
 // SetOriginalPayloadFormat replaces the originalpayloadformat associated with this Profile.
 func (ms Profile) SetOriginalPayloadFormat(v string) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.OriginalPayloadFormat = v
+	ms.orig.MarkModified()
 }
 
 // OriginalPayload returns the OriginalPayload associated with this Profile.
 func (ms Profile) OriginalPayload() pcommon.ByteSlice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.ByteSlice(internal.NewByteSliceWrapper(&ms.orig.OriginalPayload, ms.state))
 }
 
 // AttributeIndices returns the AttributeIndices associated with this Profile.
 func (ms Profile) AttributeIndices() pcommon.Int32Slice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.Int32Slice(internal.NewInt32SliceWrapper(&ms.orig.AttributeIndices, ms.state))
 }
 

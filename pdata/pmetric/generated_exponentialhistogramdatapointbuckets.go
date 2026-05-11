@@ -50,17 +50,22 @@ func (ms ExponentialHistogramDataPointBuckets) MoveTo(dest ExponentialHistogramD
 
 // Offset returns the offset associated with this ExponentialHistogramDataPointBuckets.
 func (ms ExponentialHistogramDataPointBuckets) Offset() int32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Offset
 }
 
 // SetOffset replaces the offset associated with this ExponentialHistogramDataPointBuckets.
 func (ms ExponentialHistogramDataPointBuckets) SetOffset(v int32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Offset = v
+	ms.orig.MarkModified()
 }
 
 // BucketCounts returns the BucketCounts associated with this ExponentialHistogramDataPointBuckets.
 func (ms ExponentialHistogramDataPointBuckets) BucketCounts() pcommon.UInt64Slice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.UInt64Slice(internal.NewUInt64SliceWrapper(&ms.orig.BucketCounts, ms.state))
 }
 

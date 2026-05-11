@@ -18,6 +18,7 @@ import (
 // Histogram represents the type of a metric that is calculated by aggregating as a Histogram of all reported measurements over a time interval.
 type Histogram struct {
 	DataPoints             []*HistogramDataPoint
+	lazy                   proto.LazyMessage
 	AggregationTemporality AggregationTemporality
 }
 
@@ -68,9 +69,12 @@ func CopyHistogram(dest, src *Histogram) *Histogram {
 	if dest == nil {
 		dest = NewHistogram()
 	}
+	src.EnsureDecoded()
+	dest.EnsureDecoded()
 	dest.DataPoints = CopyHistogramDataPointPtrSlice(dest.DataPoints, src.DataPoints)
 
 	dest.AggregationTemporality = src.AggregationTemporality
+	dest.MarkModified()
 
 	return dest
 }
@@ -127,8 +131,19 @@ func (orig *Histogram) Reset() {
 	*orig = Histogram{}
 }
 
+// LazyMessage returns the per-message protobuf lazy state.
+func (orig *Histogram) LazyMessage() *proto.LazyMessage {
+	return &orig.lazy
+}
+
+// SetLazyParent records the parent lazy state used for modification bubbling.
+func (orig *Histogram) SetLazyParent(parent *proto.LazyMessage) {
+	orig.lazy.SetParent(parent)
+}
+
 // MarshalJSON marshals all properties from the current struct to the destination stream.
 func (orig *Histogram) MarshalJSON(dest *json.Stream) {
+	orig.EnsureDecoded()
 	dest.WriteObjectStart()
 	if len(orig.DataPoints) > 0 {
 		dest.WriteObjectField("dataPoints")
@@ -150,6 +165,7 @@ func (orig *Histogram) MarshalJSON(dest *json.Stream) {
 
 // UnmarshalJSON unmarshals all properties from the current struct from the source iterator.
 func (orig *Histogram) UnmarshalJSON(iter *json.Iterator) {
+	orig.Reset()
 	for f := iter.ReadObject(); f != ""; f = iter.ReadObject() {
 		switch f {
 		case "dataPoints", "data_points":
@@ -167,6 +183,10 @@ func (orig *Histogram) UnmarshalJSON(iter *json.Iterator) {
 }
 
 func (orig *Histogram) SizeProto() int {
+	if orig.lazy.HasBytes() {
+		return len(orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -181,6 +201,10 @@ func (orig *Histogram) SizeProto() int {
 }
 
 func (orig *Histogram) MarshalProto(buf []byte) int {
+	if orig.lazy.HasBytes() {
+		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
@@ -200,6 +224,50 @@ func (orig *Histogram) MarshalProto(buf []byte) int {
 }
 
 func (orig *Histogram) UnmarshalProto(buf []byte) error {
+	if err := validateHistogramProto(buf); err != nil {
+		return err
+	}
+	orig.Reset()
+	orig.lazy.Init(buf, nil)
+	return nil
+}
+
+// EnsureDecoded materializes this message's direct fields from the attached
+// protobuf bytes. Embedded messages keep their own byte references and are
+// decoded by their getters.
+func (orig *Histogram) EnsureDecoded() {
+	if orig == nil || orig.lazy.IsDecoded() {
+		return
+	}
+	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
+		// UnmarshalProto validates the full message tree before storing bytes,
+		// so a decode failure here means the message was mutated externally.
+		panic(err)
+	}
+	orig.lazy.MarkDecoded()
+}
+
+// MarkModified records that this message must be re-encoded from fields.
+func (orig *Histogram) MarkModified() {
+	orig.EnsureDecoded()
+	orig.lazy.MarkModified()
+}
+
+// DecodeAll recursively materializes this message tree and clears lazy state.
+// It is primarily useful for tests and operations that require ordinary struct
+// equality instead of protobuf passthrough semantics.
+func (orig *Histogram) DecodeAll() {
+	orig.EnsureDecoded()
+	for i := range orig.DataPoints {
+		if orig.DataPoints[i] != nil {
+			orig.DataPoints[i].DecodeAll()
+		}
+	}
+
+	orig.lazy.Clear()
+}
+
+func validateHistogramProto(buf []byte) error {
 	var err error
 	var fieldNum int32
 	var wireType proto.WireType
@@ -207,7 +275,53 @@ func (orig *Histogram) UnmarshalProto(buf []byte) error {
 	l := len(buf)
 	pos := 0
 	for pos < l {
-		// If in a group parsing, move to the next tag.
+		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
+		if err != nil {
+			return err
+		}
+		switch fieldNum {
+
+		case 1:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field DataPoints", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateHistogramDataPointProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 2:
+			if wireType != proto.WireTypeVarint {
+				return fmt.Errorf("proto: wrong wireType = %d for field AggregationTemporality", wireType)
+			}
+			_, pos, err = proto.ConsumeVarint(buf, pos)
+			if err != nil {
+				return err
+			}
+		default:
+			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (orig *Histogram) decodeProto(buf []byte) error {
+	var err error
+	var fieldNum int32
+	var wireType proto.WireType
+
+	l := len(buf)
+	pos := 0
+	for pos < l {
 		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
 		if err != nil {
 			return err
@@ -225,10 +339,7 @@ func (orig *Histogram) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.DataPoints = append(orig.DataPoints, NewHistogramDataPoint())
-			err = orig.DataPoints[len(orig.DataPoints)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			orig.DataPoints[len(orig.DataPoints)-1].lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 2:
 			if wireType != proto.WireTypeVarint {

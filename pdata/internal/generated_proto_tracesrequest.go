@@ -19,6 +19,7 @@ import (
 type TracesRequest struct {
 	RequestContext *RequestContext
 	TracesData     TracesData
+	lazy           proto.LazyMessage
 	FormatVersion  uint32
 }
 
@@ -68,11 +69,14 @@ func CopyTracesRequest(dest, src *TracesRequest) *TracesRequest {
 	if dest == nil {
 		dest = NewTracesRequest()
 	}
+	src.EnsureDecoded()
+	dest.EnsureDecoded()
 	dest.RequestContext = CopyRequestContext(dest.RequestContext, src.RequestContext)
 
 	CopyTracesData(&dest.TracesData, &src.TracesData)
 
 	dest.FormatVersion = src.FormatVersion
+	dest.MarkModified()
 
 	return dest
 }
@@ -129,8 +133,19 @@ func (orig *TracesRequest) Reset() {
 	*orig = TracesRequest{}
 }
 
+// LazyMessage returns the per-message protobuf lazy state.
+func (orig *TracesRequest) LazyMessage() *proto.LazyMessage {
+	return &orig.lazy
+}
+
+// SetLazyParent records the parent lazy state used for modification bubbling.
+func (orig *TracesRequest) SetLazyParent(parent *proto.LazyMessage) {
+	orig.lazy.SetParent(parent)
+}
+
 // MarshalJSON marshals all properties from the current struct to the destination stream.
 func (orig *TracesRequest) MarshalJSON(dest *json.Stream) {
+	orig.EnsureDecoded()
 	dest.WriteObjectStart()
 	if orig.RequestContext != nil {
 		dest.WriteObjectField("requestContext")
@@ -147,6 +162,7 @@ func (orig *TracesRequest) MarshalJSON(dest *json.Stream) {
 
 // UnmarshalJSON unmarshals all properties from the current struct from the source iterator.
 func (orig *TracesRequest) UnmarshalJSON(iter *json.Iterator) {
+	orig.Reset()
 	for f := iter.ReadObject(); f != ""; f = iter.ReadObject() {
 		switch f {
 		case "requestContext", "request_context":
@@ -164,6 +180,10 @@ func (orig *TracesRequest) UnmarshalJSON(iter *json.Iterator) {
 }
 
 func (orig *TracesRequest) SizeProto() int {
+	if orig.lazy.HasBytes() {
+		return len(orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -180,6 +200,10 @@ func (orig *TracesRequest) SizeProto() int {
 }
 
 func (orig *TracesRequest) MarshalProto(buf []byte) int {
+	if orig.lazy.HasBytes() {
+		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
@@ -206,6 +230,49 @@ func (orig *TracesRequest) MarshalProto(buf []byte) int {
 }
 
 func (orig *TracesRequest) UnmarshalProto(buf []byte) error {
+	if err := validateTracesRequestProto(buf); err != nil {
+		return err
+	}
+	orig.Reset()
+	orig.lazy.Init(buf, nil)
+	return nil
+}
+
+// EnsureDecoded materializes this message's direct fields from the attached
+// protobuf bytes. Embedded messages keep their own byte references and are
+// decoded by their getters.
+func (orig *TracesRequest) EnsureDecoded() {
+	if orig == nil || orig.lazy.IsDecoded() {
+		return
+	}
+	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
+		// UnmarshalProto validates the full message tree before storing bytes,
+		// so a decode failure here means the message was mutated externally.
+		panic(err)
+	}
+	orig.lazy.MarkDecoded()
+}
+
+// MarkModified records that this message must be re-encoded from fields.
+func (orig *TracesRequest) MarkModified() {
+	orig.EnsureDecoded()
+	orig.lazy.MarkModified()
+}
+
+// DecodeAll recursively materializes this message tree and clears lazy state.
+// It is primarily useful for tests and operations that require ordinary struct
+// equality instead of protobuf passthrough semantics.
+func (orig *TracesRequest) DecodeAll() {
+	orig.EnsureDecoded()
+	if orig.RequestContext != nil {
+		orig.RequestContext.DecodeAll()
+	}
+	orig.TracesData.DecodeAll()
+
+	orig.lazy.Clear()
+}
+
+func validateTracesRequestProto(buf []byte) error {
 	var err error
 	var fieldNum int32
 	var wireType proto.WireType
@@ -213,7 +280,68 @@ func (orig *TracesRequest) UnmarshalProto(buf []byte) error {
 	l := len(buf)
 	pos := 0
 	for pos < l {
-		// If in a group parsing, move to the next tag.
+		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
+		if err != nil {
+			return err
+		}
+		switch fieldNum {
+
+		case 2:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field RequestContext", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateRequestContextProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 3:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field TracesData", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateTracesDataProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 1:
+			if wireType != proto.WireTypeI32 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FormatVersion", wireType)
+			}
+			_, pos, err = proto.ConsumeI32(buf, pos)
+			if err != nil {
+				return err
+			}
+		default:
+			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (orig *TracesRequest) decodeProto(buf []byte) error {
+	var err error
+	var fieldNum int32
+	var wireType proto.WireType
+
+	l := len(buf)
+	pos := 0
+	for pos < l {
 		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
 		if err != nil {
 			return err
@@ -232,10 +360,7 @@ func (orig *TracesRequest) UnmarshalProto(buf []byte) error {
 			startPos := pos - length
 
 			orig.RequestContext = NewRequestContext()
-			err = orig.RequestContext.UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			orig.RequestContext.lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 3:
 			if wireType != proto.WireTypeLen {
@@ -248,10 +373,7 @@ func (orig *TracesRequest) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 
-			err = orig.TracesData.UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			(&orig.TracesData).lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 1:
 			if wireType != proto.WireTypeI32 {

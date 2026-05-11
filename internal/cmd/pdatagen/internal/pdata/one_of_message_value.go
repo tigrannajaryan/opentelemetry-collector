@@ -17,6 +17,7 @@ const oneOfMessageAccessorsTemplate = `// {{ .fieldName }} returns the {{ .lower
 //
 // Calling this function on zero-initialized {{ .structName }} will cause a panic.
 func (ms {{ .structName }}) {{ .fieldName }}() {{ .returnType }} {
+	ms.orig.EnsureDecoded()
 	v, ok := ms.orig.Get{{ .originOneOfFieldName }}().(*internal.{{ .originStructType }})
 	if !ok {
 		return {{ .returnType }}{}
@@ -31,6 +32,7 @@ func (ms {{ .structName }}) {{ .fieldName }}() {{ .returnType }} {
 // Calling this function on zero-initialized {{ .structName }} will cause a panic.
 func (ms {{ .structName }}) SetEmpty{{ .fieldName }}() {{ .returnType }} {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	var ov *internal.{{ .originStructType }}
 	if !metadata.PdataUseProtoPoolingFeatureGate.IsEnabled() {
 		ov = &internal.{{ .originStructType }}{}
@@ -39,6 +41,7 @@ func (ms {{ .structName }}) SetEmpty{{ .fieldName }}() {{ .returnType }} {
 	}
 	ov.{{ .fieldName }} = internal.New{{ .fieldOriginName }}()
 	ms.orig.{{ .originOneOfFieldName }} = ov
+	ms.orig.MarkModified()
 	return new{{ .returnType }}(ov.{{ .fieldName }}, ms.state)
 }`
 

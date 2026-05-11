@@ -47,6 +47,8 @@ func (ms Traces) MoveTo(dest Traces) {
 
 // ResourceSpans returns the ResourceSpans associated with this Traces.
 func (ms Traces) ResourceSpans() ResourceSpansSlice {
+	ms.getOrig().EnsureDecoded()
+	ms.getOrig().MarkModified()
 	return newResourceSpansSlice(&ms.getOrig().ResourceSpans, ms.getState())
 }
 

@@ -51,34 +51,43 @@ func (ms NumberDataPoint) MoveTo(dest NumberDataPoint) {
 
 // Attributes returns the Attributes associated with this NumberDataPoint.
 func (ms NumberDataPoint) Attributes() pcommon.Map {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.Map(internal.NewMapWrapper(&ms.orig.Attributes, ms.state))
 }
 
 // StartTimestamp returns the starttimestamp associated with this NumberDataPoint.
 func (ms NumberDataPoint) StartTimestamp() pcommon.Timestamp {
+	ms.orig.EnsureDecoded()
 	return pcommon.Timestamp(ms.orig.StartTimeUnixNano)
 }
 
 // SetStartTimestamp replaces the starttimestamp associated with this NumberDataPoint.
 func (ms NumberDataPoint) SetStartTimestamp(v pcommon.Timestamp) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.StartTimeUnixNano = uint64(v)
+	ms.orig.MarkModified()
 }
 
 // Timestamp returns the timestamp associated with this NumberDataPoint.
 func (ms NumberDataPoint) Timestamp() pcommon.Timestamp {
+	ms.orig.EnsureDecoded()
 	return pcommon.Timestamp(ms.orig.TimeUnixNano)
 }
 
 // SetTimestamp replaces the timestamp associated with this NumberDataPoint.
 func (ms NumberDataPoint) SetTimestamp(v pcommon.Timestamp) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.TimeUnixNano = uint64(v)
+	ms.orig.MarkModified()
 }
 
 // ValueType returns the type of the value for this NumberDataPoint.
 // Calling this function on zero-initialized NumberDataPoint will cause a panic.
 func (ms NumberDataPoint) ValueType() NumberDataPointValueType {
+	ms.orig.EnsureDecoded()
 	switch ms.orig.Value.(type) {
 	case *internal.NumberDataPoint_AsDouble:
 		return NumberDataPointValueTypeDouble
@@ -90,12 +99,14 @@ func (ms NumberDataPoint) ValueType() NumberDataPointValueType {
 
 // DoubleValue returns the double associated with this NumberDataPoint.
 func (ms NumberDataPoint) DoubleValue() float64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.GetAsDouble()
 }
 
 // SetDoubleValue replaces the double associated with this NumberDataPoint.
 func (ms NumberDataPoint) SetDoubleValue(v float64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	var ov *internal.NumberDataPoint_AsDouble
 	if !metadata.PdataUseProtoPoolingFeatureGate.IsEnabled() {
 		ov = &internal.NumberDataPoint_AsDouble{}
@@ -104,14 +115,17 @@ func (ms NumberDataPoint) SetDoubleValue(v float64) {
 	}
 	ov.AsDouble = v
 	ms.orig.Value = ov
+	ms.orig.MarkModified()
 } // IntValue returns the int associated with this NumberDataPoint.
 func (ms NumberDataPoint) IntValue() int64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.GetAsInt()
 }
 
 // SetIntValue replaces the int associated with this NumberDataPoint.
 func (ms NumberDataPoint) SetIntValue(v int64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	var ov *internal.NumberDataPoint_AsInt
 	if !metadata.PdataUseProtoPoolingFeatureGate.IsEnabled() {
 		ov = &internal.NumberDataPoint_AsInt{}
@@ -120,22 +134,28 @@ func (ms NumberDataPoint) SetIntValue(v int64) {
 	}
 	ov.AsInt = v
 	ms.orig.Value = ov
+	ms.orig.MarkModified()
 }
 
 // Exemplars returns the Exemplars associated with this NumberDataPoint.
 func (ms NumberDataPoint) Exemplars() ExemplarSlice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return newExemplarSlice(&ms.orig.Exemplars, ms.state)
 }
 
 // Flags returns the flags associated with this NumberDataPoint.
 func (ms NumberDataPoint) Flags() DataPointFlags {
+	ms.orig.EnsureDecoded()
 	return DataPointFlags(ms.orig.Flags)
 }
 
 // SetFlags replaces the flags associated with this NumberDataPoint.
 func (ms NumberDataPoint) SetFlags(v DataPointFlags) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Flags = uint32(v)
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

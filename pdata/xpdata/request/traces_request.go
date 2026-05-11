@@ -33,5 +33,6 @@ func UnmarshalTraces(buf []byte) (context.Context, ptrace.Traces, error) {
 	if err := tr.UnmarshalProto(buf); err != nil {
 		return ctx, ptrace.Traces{}, fmt.Errorf("failed to unmarshal traces request: %w", err)
 	}
+	tr.DecodeAll()
 	return decodeContext(ctx, tr.RequestContext), ptrace.Traces(internal.TracesFromProto(tr.TracesData)), nil
 }

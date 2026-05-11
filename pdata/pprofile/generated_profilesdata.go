@@ -48,11 +48,14 @@ func (ms ProfilesData) MoveTo(dest ProfilesData) {
 
 // ResourceProfiles returns the ResourceProfiles associated with this ProfilesData.
 func (ms ProfilesData) ResourceProfiles() ResourceProfilesSlice {
+	ms.getOrig().EnsureDecoded()
+	ms.getOrig().MarkModified()
 	return newResourceProfilesSlice(&ms.getOrig().ResourceProfiles, ms.getState())
 }
 
 // Dictionary returns the dictionary associated with this ProfilesData.
 func (ms ProfilesData) Dictionary() ProfilesDictionary {
+	ms.getOrig().EnsureDecoded()
 	return newProfilesDictionary(&ms.getOrig().Dictionary, ms.getState())
 }
 

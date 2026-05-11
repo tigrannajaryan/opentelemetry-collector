@@ -21,6 +21,7 @@ import (
 type ProfilesData struct {
 	ResourceProfiles []*ResourceProfiles
 	Dictionary       ProfilesDictionary
+	lazy             proto.LazyMessage
 }
 
 var (
@@ -70,9 +71,13 @@ func CopyProfilesData(dest, src *ProfilesData) *ProfilesData {
 	if dest == nil {
 		dest = NewProfilesData()
 	}
+	src.EnsureDecoded()
+	dest.EnsureDecoded()
 	dest.ResourceProfiles = CopyResourceProfilesPtrSlice(dest.ResourceProfiles, src.ResourceProfiles)
 
 	CopyProfilesDictionary(&dest.Dictionary, &src.Dictionary)
+
+	dest.MarkModified()
 
 	return dest
 }
@@ -129,8 +134,19 @@ func (orig *ProfilesData) Reset() {
 	*orig = ProfilesData{}
 }
 
+// LazyMessage returns the per-message protobuf lazy state.
+func (orig *ProfilesData) LazyMessage() *proto.LazyMessage {
+	return &orig.lazy
+}
+
+// SetLazyParent records the parent lazy state used for modification bubbling.
+func (orig *ProfilesData) SetLazyParent(parent *proto.LazyMessage) {
+	orig.lazy.SetParent(parent)
+}
+
 // MarshalJSON marshals all properties from the current struct to the destination stream.
 func (orig *ProfilesData) MarshalJSON(dest *json.Stream) {
+	orig.EnsureDecoded()
 	dest.WriteObjectStart()
 	if len(orig.ResourceProfiles) > 0 {
 		dest.WriteObjectField("resourceProfiles")
@@ -149,6 +165,7 @@ func (orig *ProfilesData) MarshalJSON(dest *json.Stream) {
 
 // UnmarshalJSON unmarshals all properties from the current struct from the source iterator.
 func (orig *ProfilesData) UnmarshalJSON(iter *json.Iterator) {
+	orig.Reset()
 	for f := iter.ReadObject(); f != ""; f = iter.ReadObject() {
 		switch f {
 		case "resourceProfiles", "resource_profiles":
@@ -167,6 +184,10 @@ func (orig *ProfilesData) UnmarshalJSON(iter *json.Iterator) {
 }
 
 func (orig *ProfilesData) SizeProto() int {
+	if orig.lazy.HasBytes() {
+		return len(orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -180,6 +201,10 @@ func (orig *ProfilesData) SizeProto() int {
 }
 
 func (orig *ProfilesData) MarshalProto(buf []byte) int {
+	if orig.lazy.HasBytes() {
+		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
@@ -200,6 +225,50 @@ func (orig *ProfilesData) MarshalProto(buf []byte) int {
 }
 
 func (orig *ProfilesData) UnmarshalProto(buf []byte) error {
+	if err := validateProfilesDataProto(buf); err != nil {
+		return err
+	}
+	orig.Reset()
+	orig.lazy.Init(buf, nil)
+	return nil
+}
+
+// EnsureDecoded materializes this message's direct fields from the attached
+// protobuf bytes. Embedded messages keep their own byte references and are
+// decoded by their getters.
+func (orig *ProfilesData) EnsureDecoded() {
+	if orig == nil || orig.lazy.IsDecoded() {
+		return
+	}
+	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
+		// UnmarshalProto validates the full message tree before storing bytes,
+		// so a decode failure here means the message was mutated externally.
+		panic(err)
+	}
+	orig.lazy.MarkDecoded()
+}
+
+// MarkModified records that this message must be re-encoded from fields.
+func (orig *ProfilesData) MarkModified() {
+	orig.EnsureDecoded()
+	orig.lazy.MarkModified()
+}
+
+// DecodeAll recursively materializes this message tree and clears lazy state.
+// It is primarily useful for tests and operations that require ordinary struct
+// equality instead of protobuf passthrough semantics.
+func (orig *ProfilesData) DecodeAll() {
+	orig.EnsureDecoded()
+	for i := range orig.ResourceProfiles {
+		if orig.ResourceProfiles[i] != nil {
+			orig.ResourceProfiles[i].DecodeAll()
+		}
+	}
+	orig.Dictionary.DecodeAll()
+	orig.lazy.Clear()
+}
+
+func validateProfilesDataProto(buf []byte) error {
 	var err error
 	var fieldNum int32
 	var wireType proto.WireType
@@ -207,7 +276,59 @@ func (orig *ProfilesData) UnmarshalProto(buf []byte) error {
 	l := len(buf)
 	pos := 0
 	for pos < l {
-		// If in a group parsing, move to the next tag.
+		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
+		if err != nil {
+			return err
+		}
+		switch fieldNum {
+
+		case 1:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field ResourceProfiles", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateResourceProfilesProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 2:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Dictionary", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateProfilesDictionaryProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+		default:
+			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (orig *ProfilesData) decodeProto(buf []byte) error {
+	var err error
+	var fieldNum int32
+	var wireType proto.WireType
+
+	l := len(buf)
+	pos := 0
+	for pos < l {
 		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
 		if err != nil {
 			return err
@@ -225,10 +346,7 @@ func (orig *ProfilesData) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.ResourceProfiles = append(orig.ResourceProfiles, NewResourceProfiles())
-			err = orig.ResourceProfiles[len(orig.ResourceProfiles)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			orig.ResourceProfiles[len(orig.ResourceProfiles)-1].lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 2:
 			if wireType != proto.WireTypeLen {
@@ -241,10 +359,7 @@ func (orig *ProfilesData) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 
-			err = orig.Dictionary.UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			(&orig.Dictionary).lazy.Init(buf[startPos:pos], &orig.lazy)
 		default:
 			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
 			if err != nil {

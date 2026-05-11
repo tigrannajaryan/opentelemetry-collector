@@ -54,23 +54,29 @@ func (ms Exemplar) MoveTo(dest Exemplar) {
 
 // FilteredAttributes returns the FilteredAttributes associated with this Exemplar.
 func (ms Exemplar) FilteredAttributes() pcommon.Map {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.Map(internal.NewMapWrapper(&ms.orig.FilteredAttributes, ms.state))
 }
 
 // Timestamp returns the timestamp associated with this Exemplar.
 func (ms Exemplar) Timestamp() pcommon.Timestamp {
+	ms.orig.EnsureDecoded()
 	return pcommon.Timestamp(ms.orig.TimeUnixNano)
 }
 
 // SetTimestamp replaces the timestamp associated with this Exemplar.
 func (ms Exemplar) SetTimestamp(v pcommon.Timestamp) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.TimeUnixNano = uint64(v)
+	ms.orig.MarkModified()
 }
 
 // ValueType returns the type of the value for this Exemplar.
 // Calling this function on zero-initialized Exemplar will cause a panic.
 func (ms Exemplar) ValueType() ExemplarValueType {
+	ms.orig.EnsureDecoded()
 	switch ms.orig.Value.(type) {
 	case *internal.Exemplar_AsDouble:
 		return ExemplarValueTypeDouble
@@ -82,12 +88,14 @@ func (ms Exemplar) ValueType() ExemplarValueType {
 
 // DoubleValue returns the double associated with this Exemplar.
 func (ms Exemplar) DoubleValue() float64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.GetAsDouble()
 }
 
 // SetDoubleValue replaces the double associated with this Exemplar.
 func (ms Exemplar) SetDoubleValue(v float64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	var ov *internal.Exemplar_AsDouble
 	if !metadata.PdataUseProtoPoolingFeatureGate.IsEnabled() {
 		ov = &internal.Exemplar_AsDouble{}
@@ -96,14 +104,17 @@ func (ms Exemplar) SetDoubleValue(v float64) {
 	}
 	ov.AsDouble = v
 	ms.orig.Value = ov
+	ms.orig.MarkModified()
 } // IntValue returns the int associated with this Exemplar.
 func (ms Exemplar) IntValue() int64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.GetAsInt()
 }
 
 // SetIntValue replaces the int associated with this Exemplar.
 func (ms Exemplar) SetIntValue(v int64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	var ov *internal.Exemplar_AsInt
 	if !metadata.PdataUseProtoPoolingFeatureGate.IsEnabled() {
 		ov = &internal.Exemplar_AsInt{}
@@ -112,28 +123,35 @@ func (ms Exemplar) SetIntValue(v int64) {
 	}
 	ov.AsInt = v
 	ms.orig.Value = ov
+	ms.orig.MarkModified()
 }
 
 // TraceID returns the traceid associated with this Exemplar.
 func (ms Exemplar) TraceID() pcommon.TraceID {
+	ms.orig.EnsureDecoded()
 	return pcommon.TraceID(ms.orig.TraceId)
 }
 
 // SetTraceID replaces the traceid associated with this Exemplar.
 func (ms Exemplar) SetTraceID(v pcommon.TraceID) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.TraceId = internal.TraceID(v)
+	ms.orig.MarkModified()
 }
 
 // SpanID returns the spanid associated with this Exemplar.
 func (ms Exemplar) SpanID() pcommon.SpanID {
+	ms.orig.EnsureDecoded()
 	return pcommon.SpanID(ms.orig.SpanId)
 }
 
 // SetSpanID replaces the spanid associated with this Exemplar.
 func (ms Exemplar) SetSpanID(v pcommon.SpanID) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.SpanId = internal.SpanID(v)
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

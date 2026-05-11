@@ -52,29 +52,36 @@ func (ms KeyValueAndUnit) MoveTo(dest KeyValueAndUnit) {
 
 // KeyStrindex returns the keystrindex associated with this KeyValueAndUnit.
 func (ms KeyValueAndUnit) KeyStrindex() int32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.KeyStrindex
 }
 
 // SetKeyStrindex replaces the keystrindex associated with this KeyValueAndUnit.
 func (ms KeyValueAndUnit) SetKeyStrindex(v int32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.KeyStrindex = v
+	ms.orig.MarkModified()
 }
 
 // Value returns the value associated with this KeyValueAndUnit.
 func (ms KeyValueAndUnit) Value() pcommon.Value {
+	ms.orig.EnsureDecoded()
 	return pcommon.Value(internal.NewValueWrapper(&ms.orig.Value, ms.state))
 }
 
 // UnitStrindex returns the unitstrindex associated with this KeyValueAndUnit.
 func (ms KeyValueAndUnit) UnitStrindex() int32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.UnitStrindex
 }
 
 // SetUnitStrindex replaces the unitstrindex associated with this KeyValueAndUnit.
 func (ms KeyValueAndUnit) SetUnitStrindex(v int32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.UnitStrindex = v
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

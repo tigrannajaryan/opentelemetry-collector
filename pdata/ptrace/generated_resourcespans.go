@@ -50,23 +50,29 @@ func (ms ResourceSpans) MoveTo(dest ResourceSpans) {
 
 // Resource returns the resource associated with this ResourceSpans.
 func (ms ResourceSpans) Resource() pcommon.Resource {
+	ms.orig.EnsureDecoded()
 	return pcommon.Resource(internal.NewResourceWrapper(&ms.orig.Resource, ms.state))
 }
 
 // ScopeSpans returns the ScopeSpans associated with this ResourceSpans.
 func (ms ResourceSpans) ScopeSpans() ScopeSpansSlice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return newScopeSpansSlice(&ms.orig.ScopeSpans, ms.state)
 }
 
 // SchemaUrl returns the schemaurl associated with this ResourceSpans.
 func (ms ResourceSpans) SchemaUrl() string {
+	ms.orig.EnsureDecoded()
 	return ms.orig.SchemaUrl
 }
 
 // SetSchemaUrl replaces the schemaurl associated with this ResourceSpans.
 func (ms ResourceSpans) SetSchemaUrl(v string) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.SchemaUrl = v
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

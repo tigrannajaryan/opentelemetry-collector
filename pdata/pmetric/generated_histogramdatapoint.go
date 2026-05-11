@@ -50,135 +50,173 @@ func (ms HistogramDataPoint) MoveTo(dest HistogramDataPoint) {
 
 // Attributes returns the Attributes associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) Attributes() pcommon.Map {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.Map(internal.NewMapWrapper(&ms.orig.Attributes, ms.state))
 }
 
 // StartTimestamp returns the starttimestamp associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) StartTimestamp() pcommon.Timestamp {
+	ms.orig.EnsureDecoded()
 	return pcommon.Timestamp(ms.orig.StartTimeUnixNano)
 }
 
 // SetStartTimestamp replaces the starttimestamp associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) SetStartTimestamp(v pcommon.Timestamp) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.StartTimeUnixNano = uint64(v)
+	ms.orig.MarkModified()
 }
 
 // Timestamp returns the timestamp associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) Timestamp() pcommon.Timestamp {
+	ms.orig.EnsureDecoded()
 	return pcommon.Timestamp(ms.orig.TimeUnixNano)
 }
 
 // SetTimestamp replaces the timestamp associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) SetTimestamp(v pcommon.Timestamp) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.TimeUnixNano = uint64(v)
+	ms.orig.MarkModified()
 }
 
 // Count returns the count associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) Count() uint64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Count
 }
 
 // SetCount replaces the count associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) SetCount(v uint64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Count = v
+	ms.orig.MarkModified()
 }
 
 // Sum returns the sum associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) Sum() float64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Sum
 }
 
 // HasSum returns true if the HistogramDataPoint contains a
 // Sum value otherwise.
 func (ms HistogramDataPoint) HasSum() bool {
+	ms.orig.EnsureDecoded()
 	return ms.orig.HasSum()
 }
 
 // SetSum replaces the sum associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) SetSum(v float64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.SetSum(v)
+	ms.orig.MarkModified()
 }
 
 // RemoveSum removes the sum associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) RemoveSum() {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.RemoveSum()
+	ms.orig.MarkModified()
 }
 
 // BucketCounts returns the BucketCounts associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) BucketCounts() pcommon.UInt64Slice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.UInt64Slice(internal.NewUInt64SliceWrapper(&ms.orig.BucketCounts, ms.state))
 }
 
 // ExplicitBounds returns the ExplicitBounds associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) ExplicitBounds() pcommon.Float64Slice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.Float64Slice(internal.NewFloat64SliceWrapper(&ms.orig.ExplicitBounds, ms.state))
 }
 
 // Exemplars returns the Exemplars associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) Exemplars() ExemplarSlice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return newExemplarSlice(&ms.orig.Exemplars, ms.state)
 }
 
 // Flags returns the flags associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) Flags() DataPointFlags {
+	ms.orig.EnsureDecoded()
 	return DataPointFlags(ms.orig.Flags)
 }
 
 // SetFlags replaces the flags associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) SetFlags(v DataPointFlags) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Flags = uint32(v)
+	ms.orig.MarkModified()
 }
 
 // Min returns the min associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) Min() float64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Min
 }
 
 // HasMin returns true if the HistogramDataPoint contains a
 // Min value otherwise.
 func (ms HistogramDataPoint) HasMin() bool {
+	ms.orig.EnsureDecoded()
 	return ms.orig.HasMin()
 }
 
 // SetMin replaces the min associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) SetMin(v float64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.SetMin(v)
+	ms.orig.MarkModified()
 }
 
 // RemoveMin removes the min associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) RemoveMin() {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.RemoveMin()
+	ms.orig.MarkModified()
 }
 
 // Max returns the max associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) Max() float64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Max
 }
 
 // HasMax returns true if the HistogramDataPoint contains a
 // Max value otherwise.
 func (ms HistogramDataPoint) HasMax() bool {
+	ms.orig.EnsureDecoded()
 	return ms.orig.HasMax()
 }
 
 // SetMax replaces the max associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) SetMax(v float64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.SetMax(v)
+	ms.orig.MarkModified()
 }
 
 // RemoveMax removes the max associated with this HistogramDataPoint.
 func (ms HistogramDataPoint) RemoveMax() {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.RemoveMax()
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

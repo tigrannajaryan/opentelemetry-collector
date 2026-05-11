@@ -12,13 +12,16 @@ import (
 
 const primitiveAccessorsTemplate = `// {{ .fieldName }} returns the {{ .lowerFieldName }} associated with this {{ .structName }}.
 func (ms {{ .structName }}) {{ .fieldName }}() {{ .packageName }}{{ .returnType }} {
+	ms.{{ .origAccessor }}.EnsureDecoded()
 	return ms.{{ .origAccessor }}.{{ .originFieldName }}
 }
 
 // Set{{ .fieldName }} replaces the {{ .lowerFieldName }} associated with this {{ .structName }}.
 func (ms {{ .structName }}) Set{{ .fieldName }}(v {{ .returnType }}) {
 	ms.{{ .stateAccessor }}.AssertMutable()
+	ms.{{ .origAccessor }}.EnsureDecoded()
 	ms.{{ .origAccessor }}.{{ .originFieldName }} = v
+	ms.{{ .origAccessor }}.MarkModified()
 }`
 
 const primitiveAccessorsTestTemplate = `func Test{{ .structName }}_{{ .fieldName }}(t *testing.T) {

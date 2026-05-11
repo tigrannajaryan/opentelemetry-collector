@@ -50,24 +50,30 @@ func (ms Link) MoveTo(dest Link) {
 
 // TraceID returns the traceid associated with this Link.
 func (ms Link) TraceID() pcommon.TraceID {
+	ms.orig.EnsureDecoded()
 	return pcommon.TraceID(ms.orig.TraceId)
 }
 
 // SetTraceID replaces the traceid associated with this Link.
 func (ms Link) SetTraceID(v pcommon.TraceID) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.TraceId = internal.TraceID(v)
+	ms.orig.MarkModified()
 }
 
 // SpanID returns the spanid associated with this Link.
 func (ms Link) SpanID() pcommon.SpanID {
+	ms.orig.EnsureDecoded()
 	return pcommon.SpanID(ms.orig.SpanId)
 }
 
 // SetSpanID replaces the spanid associated with this Link.
 func (ms Link) SetSpanID(v pcommon.SpanID) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.SpanId = internal.SpanID(v)
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

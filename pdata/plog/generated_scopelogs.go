@@ -50,23 +50,29 @@ func (ms ScopeLogs) MoveTo(dest ScopeLogs) {
 
 // Scope returns the scope associated with this ScopeLogs.
 func (ms ScopeLogs) Scope() pcommon.InstrumentationScope {
+	ms.orig.EnsureDecoded()
 	return pcommon.InstrumentationScope(internal.NewInstrumentationScopeWrapper(&ms.orig.Scope, ms.state))
 }
 
 // LogRecords returns the LogRecords associated with this ScopeLogs.
 func (ms ScopeLogs) LogRecords() LogRecordSlice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return newLogRecordSlice(&ms.orig.LogRecords, ms.state)
 }
 
 // SchemaUrl returns the schemaurl associated with this ScopeLogs.
 func (ms ScopeLogs) SchemaUrl() string {
+	ms.orig.EnsureDecoded()
 	return ms.orig.SchemaUrl
 }
 
 // SetSchemaUrl replaces the schemaurl associated with this ScopeLogs.
 func (ms ScopeLogs) SetSchemaUrl(v string) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.SchemaUrl = v
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

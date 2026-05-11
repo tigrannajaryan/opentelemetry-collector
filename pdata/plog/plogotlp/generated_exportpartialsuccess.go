@@ -49,24 +49,30 @@ func (ms ExportPartialSuccess) MoveTo(dest ExportPartialSuccess) {
 
 // RejectedLogRecords returns the rejectedlogrecords associated with this ExportPartialSuccess.
 func (ms ExportPartialSuccess) RejectedLogRecords() int64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.RejectedLogRecords
 }
 
 // SetRejectedLogRecords replaces the rejectedlogrecords associated with this ExportPartialSuccess.
 func (ms ExportPartialSuccess) SetRejectedLogRecords(v int64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.RejectedLogRecords = v
+	ms.orig.MarkModified()
 }
 
 // ErrorMessage returns the errormessage associated with this ExportPartialSuccess.
 func (ms ExportPartialSuccess) ErrorMessage() string {
+	ms.orig.EnsureDecoded()
 	return ms.orig.ErrorMessage
 }
 
 // SetErrorMessage replaces the errormessage associated with this ExportPartialSuccess.
 func (ms ExportPartialSuccess) SetErrorMessage(v string) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.ErrorMessage = v
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

@@ -33,5 +33,6 @@ func UnmarshalMetrics(buf []byte) (context.Context, pmetric.Metrics, error) {
 	if err := mr.UnmarshalProto(buf); err != nil {
 		return ctx, pmetric.Metrics{}, fmt.Errorf("failed to unmarshal metrics request: %w", err)
 	}
+	mr.DecodeAll()
 	return decodeContext(ctx, mr.RequestContext), pmetric.Metrics(internal.MetricsFromProto(mr.MetricsData)), nil
 }

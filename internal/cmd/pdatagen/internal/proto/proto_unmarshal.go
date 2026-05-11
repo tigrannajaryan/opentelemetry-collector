@@ -282,24 +282,26 @@ const unmarshalProtoBytes = `
 			ov = ProtoPool{{ .oneOfMessageName }}.Get().(*{{ .oneOfMessageName }})
 		}
 		if length != 0 {
-			ov.{{ .fieldName }} = make([]byte, length)
-			copy(ov.{{ .fieldName }}, buf[startPos:pos])
+			ov.{{ .fieldName }} = buf[startPos:pos]
 		}
 		orig.{{ .oneOfGroup }} = ov
 {{- else if .repeated -}}
 		if length != 0 {
-			orig.{{ .fieldName }} = append(orig.{{ .fieldName }}, make([]byte, length))
-			copy(orig.{{ .fieldName }}[len(orig.{{ .fieldName }}) - 1], buf[startPos:pos])
+			orig.{{ .fieldName }} = append(orig.{{ .fieldName }}, buf[startPos:pos])
 		} else {
 			orig.{{ .fieldName }} = append(orig.{{ .fieldName }}, nil)
 		}
 {{- else -}}
 		if length != 0 {
-			orig.{{ .fieldName }} = make([]byte, length)
-			copy(orig.{{ .fieldName }}, buf[startPos:pos])
+			orig.{{ .fieldName }} = buf[startPos:pos]
 		}
 {{- end }}`
 
+// Message fields are the boundary where lazy decoding is applied. The parent
+// decode pass only validates the length-delimited payload and records the exact
+// sub-slice for the child message. The child's own fields are decoded later
+// when its generated getter calls EnsureDecoded. Hand-written fixed-size ID
+// messages remain eager because they do not have generated lazy state.
 const unmarshalProtoMessage = `
 	case {{ .protoFieldID }}:
 		if wireType != proto.WireTypeLen {
@@ -311,6 +313,7 @@ const unmarshalProtoMessage = `
 			return err
 		}
 		startPos := pos - length
+{{ if .lazyMessage -}}
 {{ if ne .oneOfGroup "" -}}
 		var ov *{{ .oneOfMessageName }}
 		if !metadata.PdataUseProtoPoolingFeatureGate.IsEnabled() {
@@ -319,19 +322,16 @@ const unmarshalProtoMessage = `
 			ov = ProtoPool{{ .oneOfMessageName }}.Get().(*{{ .oneOfMessageName }})
 		}
 		ov.{{ .fieldName }} = New{{ .messageName }}()
-		err = ov.{{ .fieldName }}.UnmarshalProto(buf[startPos:pos])
-		if err != nil {
-			return err
-		}
+		ov.{{ .fieldName }}.lazy.Init(buf[startPos:pos], &orig.lazy)
 		orig.{{ .oneOfGroup }} = ov
 {{- else if .repeated -}}
 		orig.{{ .fieldName }} = append(orig.{{ .fieldName }}, {{ if .nullable }}New{{ .messageName }}(){{ else }}{{ .defaultValue }}{{ end }})
-		err = orig.{{ .fieldName }}[len(orig.{{ .fieldName }})-1].UnmarshalProto(buf[startPos:pos])
-		if err != nil {
-			return err
-		}
+		{{ if .nullable }}orig.{{ .fieldName }}[len(orig.{{ .fieldName }})-1]{{ else }}(&orig.{{ .fieldName }}[len(orig.{{ .fieldName }})-1]){{ end }}.lazy.Init(buf[startPos:pos], &orig.lazy)
 {{- else }}
 		{{ if .nullable }}orig.{{ .fieldName }} = New{{ .messageName }}(){{ end }}
+		{{ if .nullable }}orig.{{ .fieldName }}{{ else }}(&orig.{{ .fieldName }}){{ end }}.lazy.Init(buf[startPos:pos], &orig.lazy)
+{{- end }}
+{{- else }}
 		err = orig.{{ .fieldName }}.UnmarshalProto(buf[startPos:pos]) 
 		if err != nil {
 			return err

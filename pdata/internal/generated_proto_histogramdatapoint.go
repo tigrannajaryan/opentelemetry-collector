@@ -23,6 +23,7 @@ type HistogramDataPoint struct {
 	BucketCounts      []uint64
 	ExplicitBounds    []float64
 	Exemplars         []Exemplar
+	lazy              proto.LazyMessage
 	StartTimeUnixNano uint64
 	TimeUnixNano      uint64
 	Count             uint64
@@ -84,6 +85,8 @@ func CopyHistogramDataPoint(dest, src *HistogramDataPoint) *HistogramDataPoint {
 	if dest == nil {
 		dest = NewHistogramDataPoint()
 	}
+	src.EnsureDecoded()
+	dest.EnsureDecoded()
 	dest.Attributes = CopyKeyValueSlice(dest.Attributes, src.Attributes)
 
 	dest.StartTimeUnixNano = src.StartTimeUnixNano
@@ -113,6 +116,8 @@ func CopyHistogramDataPoint(dest, src *HistogramDataPoint) *HistogramDataPoint {
 	} else {
 		dest.RemoveMax()
 	}
+
+	dest.MarkModified()
 
 	return dest
 }
@@ -169,8 +174,19 @@ func (orig *HistogramDataPoint) Reset() {
 	*orig = HistogramDataPoint{}
 }
 
+// LazyMessage returns the per-message protobuf lazy state.
+func (orig *HistogramDataPoint) LazyMessage() *proto.LazyMessage {
+	return &orig.lazy
+}
+
+// SetLazyParent records the parent lazy state used for modification bubbling.
+func (orig *HistogramDataPoint) SetLazyParent(parent *proto.LazyMessage) {
+	orig.lazy.SetParent(parent)
+}
+
 // MarshalJSON marshals all properties from the current struct to the destination stream.
 func (orig *HistogramDataPoint) MarshalJSON(dest *json.Stream) {
+	orig.EnsureDecoded()
 	dest.WriteObjectStart()
 	if len(orig.Attributes) > 0 {
 		dest.WriteObjectField("attributes")
@@ -247,6 +263,7 @@ func (orig *HistogramDataPoint) MarshalJSON(dest *json.Stream) {
 
 // UnmarshalJSON unmarshals all properties from the current struct from the source iterator.
 func (orig *HistogramDataPoint) UnmarshalJSON(iter *json.Iterator) {
+	orig.Reset()
 	for f := iter.ReadObject(); f != ""; f = iter.ReadObject() {
 		switch f {
 		case "attributes":
@@ -295,6 +312,10 @@ func (orig *HistogramDataPoint) UnmarshalJSON(iter *json.Iterator) {
 }
 
 func (orig *HistogramDataPoint) SizeProto() int {
+	if orig.lazy.HasBytes() {
+		return len(orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -341,6 +362,10 @@ func (orig *HistogramDataPoint) SizeProto() int {
 }
 
 func (orig *HistogramDataPoint) MarshalProto(buf []byte) int {
+	if orig.lazy.HasBytes() {
+		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
@@ -423,6 +448,52 @@ func (orig *HistogramDataPoint) MarshalProto(buf []byte) int {
 }
 
 func (orig *HistogramDataPoint) UnmarshalProto(buf []byte) error {
+	if err := validateHistogramDataPointProto(buf); err != nil {
+		return err
+	}
+	orig.Reset()
+	orig.lazy.Init(buf, nil)
+	return nil
+}
+
+// EnsureDecoded materializes this message's direct fields from the attached
+// protobuf bytes. Embedded messages keep their own byte references and are
+// decoded by their getters.
+func (orig *HistogramDataPoint) EnsureDecoded() {
+	if orig == nil || orig.lazy.IsDecoded() {
+		return
+	}
+	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
+		// UnmarshalProto validates the full message tree before storing bytes,
+		// so a decode failure here means the message was mutated externally.
+		panic(err)
+	}
+	orig.lazy.MarkDecoded()
+}
+
+// MarkModified records that this message must be re-encoded from fields.
+func (orig *HistogramDataPoint) MarkModified() {
+	orig.EnsureDecoded()
+	orig.lazy.MarkModified()
+}
+
+// DecodeAll recursively materializes this message tree and clears lazy state.
+// It is primarily useful for tests and operations that require ordinary struct
+// equality instead of protobuf passthrough semantics.
+func (orig *HistogramDataPoint) DecodeAll() {
+	orig.EnsureDecoded()
+	for i := range orig.Attributes {
+		orig.Attributes[i].DecodeAll()
+	}
+
+	for i := range orig.Exemplars {
+		orig.Exemplars[i].DecodeAll()
+	}
+
+	orig.lazy.Clear()
+}
+
+func validateHistogramDataPointProto(buf []byte) error {
 	var err error
 	var fieldNum int32
 	var wireType proto.WireType
@@ -430,7 +501,160 @@ func (orig *HistogramDataPoint) UnmarshalProto(buf []byte) error {
 	l := len(buf)
 	pos := 0
 	for pos < l {
-		// If in a group parsing, move to the next tag.
+		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
+		if err != nil {
+			return err
+		}
+		switch fieldNum {
+
+		case 9:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Attributes", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateKeyValueProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 2:
+			if wireType != proto.WireTypeI64 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StartTimeUnixNano", wireType)
+			}
+			_, pos, err = proto.ConsumeI64(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 3:
+			if wireType != proto.WireTypeI64 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TimeUnixNano", wireType)
+			}
+			_, pos, err = proto.ConsumeI64(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 4:
+			if wireType != proto.WireTypeI64 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Count", wireType)
+			}
+			_, pos, err = proto.ConsumeI64(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 5:
+			if wireType != proto.WireTypeI64 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sum", wireType)
+			}
+			_, pos, err = proto.ConsumeI64(buf, pos)
+			if err != nil {
+				return err
+			}
+		case 6:
+			switch wireType {
+			case proto.WireTypeLen:
+				var length int
+				length, pos, err = proto.ConsumeLen(buf, pos)
+				if err != nil {
+					return err
+				}
+				if length%8 != 0 {
+					return fmt.Errorf("proto: invalid field len = %d for field BucketCounts", length)
+				}
+			case proto.WireTypeI64:
+				_, pos, err = proto.ConsumeI64(buf, pos)
+				if err != nil {
+					return err
+				}
+			default:
+				return fmt.Errorf("proto: wrong wireType = %d for field BucketCounts", wireType)
+			}
+		case 7:
+			switch wireType {
+			case proto.WireTypeLen:
+				var length int
+				length, pos, err = proto.ConsumeLen(buf, pos)
+				if err != nil {
+					return err
+				}
+				if length%8 != 0 {
+					return fmt.Errorf("proto: invalid field len = %d for field ExplicitBounds", length)
+				}
+			case proto.WireTypeI64:
+				_, pos, err = proto.ConsumeI64(buf, pos)
+				if err != nil {
+					return err
+				}
+			default:
+				return fmt.Errorf("proto: wrong wireType = %d for field ExplicitBounds", wireType)
+			}
+
+		case 8:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Exemplars", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateExemplarProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 10:
+			if wireType != proto.WireTypeVarint {
+				return fmt.Errorf("proto: wrong wireType = %d for field Flags", wireType)
+			}
+			_, pos, err = proto.ConsumeVarint(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 11:
+			if wireType != proto.WireTypeI64 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Min", wireType)
+			}
+			_, pos, err = proto.ConsumeI64(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 12:
+			if wireType != proto.WireTypeI64 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Max", wireType)
+			}
+			_, pos, err = proto.ConsumeI64(buf, pos)
+			if err != nil {
+				return err
+			}
+		default:
+			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (orig *HistogramDataPoint) decodeProto(buf []byte) error {
+	var err error
+	var fieldNum int32
+	var wireType proto.WireType
+
+	l := len(buf)
+	pos := 0
+	for pos < l {
 		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
 		if err != nil {
 			return err
@@ -448,10 +672,7 @@ func (orig *HistogramDataPoint) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.Attributes = append(orig.Attributes, KeyValue{})
-			err = orig.Attributes[len(orig.Attributes)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			(&orig.Attributes[len(orig.Attributes)-1]).lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 2:
 			if wireType != proto.WireTypeI64 {
@@ -575,10 +796,7 @@ func (orig *HistogramDataPoint) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.Exemplars = append(orig.Exemplars, Exemplar{})
-			err = orig.Exemplars[len(orig.Exemplars)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			(&orig.Exemplars[len(orig.Exemplars)-1]).lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 10:
 			if wireType != proto.WireTypeVarint {

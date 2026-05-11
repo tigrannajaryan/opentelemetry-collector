@@ -140,6 +140,7 @@ func TestMarshalAndUnmarshalProtoExportMetricsPartialSuccessUnknown(t *testing.T
 	dest := NewExportMetricsPartialSuccess()
 	// message Test { required int64 field = 1313; } encoding { "field": "1234" }
 	require.NoError(t, dest.UnmarshalProto([]byte{0x88, 0x52, 0xD2, 0x09}))
+	dest.DecodeAll()
 	assert.Equal(t, NewExportMetricsPartialSuccess(), dest)
 }
 
@@ -159,6 +160,7 @@ func TestMarshalAndUnmarshalProtoExportMetricsPartialSuccess(t *testing.T) {
 
 				dest := NewExportMetricsPartialSuccess()
 				require.NoError(t, dest.UnmarshalProto(buf))
+				dest.DecodeAll()
 
 				assert.Equal(t, src, dest)
 				DeleteExportMetricsPartialSuccess(dest, true)
@@ -182,6 +184,7 @@ func TestMarshalAndUnmarshalProtoViaProtobufExportMetricsPartialSuccess(t *testi
 
 			dest := NewExportMetricsPartialSuccess()
 			require.NoError(t, dest.UnmarshalProto(goBuf))
+			dest.DecodeAll()
 			assert.Equal(t, src, dest)
 		})
 	}

@@ -13,6 +13,7 @@ import (
 const oneOfAccessorTemplate = `// {{ .typeFuncName }} returns the type of the {{ .lowerOriginFieldName }} for this {{ .structName }}.
 // Calling this function on zero-initialized {{ .structName }} will cause a panic.
 func (ms {{ .structName }}) {{ .typeFuncName }}() {{ .typeName }} {
+	ms.{{ .origAccessor }}.EnsureDecoded()
 	switch ms.{{ .origAccessor }}.{{ .originFieldName }}.(type) {
 		{{- range .values }}
 		{{ .GenerateType $.baseStruct $.OneOfField }}
@@ -53,6 +54,7 @@ const oneOfPoolOrigTemplate = `
 const oneOfMessageOrigTemplate = `
 func (m *{{ .protoName }}) Get{{ .originFieldName }}() any {
 	if m != nil {
+		m.EnsureDecoded()
 		return m.{{ .originFieldName }}
 	}
 	return nil
@@ -110,6 +112,16 @@ const oneOfMarshalProtoTemplate = `switch orig := orig.{{ .originFieldName }}.(t
 const oneOfUnmarshalProtoTemplate = `
 	{{- range .fields }}
 		{{ .GenUnmarshalProto }}
+	{{ end }}`
+
+const oneOfValidateProtoTemplate = `
+	{{- range .fields }}
+		{{ .GenValidateProto }}
+	{{ end }}`
+
+const oneOfDecodeAllProtoTemplate = `
+	{{- range .fields }}
+		{{ .GenDecodeAllProto }}
 	{{ end }}`
 
 type OneOfField struct {
@@ -226,6 +238,16 @@ func (of *oneOfProtoField) GenMarshalProto() string {
 
 func (of *oneOfProtoField) GenUnmarshalProto() string {
 	t := tmplutil.Parse("oneOfUnmarshalProtoTemplate", []byte(oneOfUnmarshalProtoTemplate))
+	return tmplutil.Execute(t, of.templateFields())
+}
+
+func (of *oneOfProtoField) GenValidateProto() string {
+	t := tmplutil.Parse("oneOfValidateProtoTemplate", []byte(oneOfValidateProtoTemplate))
+	return tmplutil.Execute(t, of.templateFields())
+}
+
+func (of *oneOfProtoField) GenDecodeAllProto() string {
+	t := tmplutil.Parse("oneOfDecodeAllProtoTemplate", []byte(oneOfDecodeAllProtoTemplate))
 	return tmplutil.Execute(t, of.templateFields())
 }
 

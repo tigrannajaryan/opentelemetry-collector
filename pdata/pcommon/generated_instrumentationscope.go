@@ -46,40 +46,51 @@ func (ms InstrumentationScope) MoveTo(dest InstrumentationScope) {
 
 // Name returns the name associated with this InstrumentationScope.
 func (ms InstrumentationScope) Name() string {
+	ms.getOrig().EnsureDecoded()
 	return ms.getOrig().Name
 }
 
 // SetName replaces the name associated with this InstrumentationScope.
 func (ms InstrumentationScope) SetName(v string) {
 	ms.getState().AssertMutable()
+	ms.getOrig().EnsureDecoded()
 	ms.getOrig().Name = v
+	ms.getOrig().MarkModified()
 }
 
 // Version returns the version associated with this InstrumentationScope.
 func (ms InstrumentationScope) Version() string {
+	ms.getOrig().EnsureDecoded()
 	return ms.getOrig().Version
 }
 
 // SetVersion replaces the version associated with this InstrumentationScope.
 func (ms InstrumentationScope) SetVersion(v string) {
 	ms.getState().AssertMutable()
+	ms.getOrig().EnsureDecoded()
 	ms.getOrig().Version = v
+	ms.getOrig().MarkModified()
 }
 
 // Attributes returns the Attributes associated with this InstrumentationScope.
 func (ms InstrumentationScope) Attributes() Map {
+	ms.getOrig().EnsureDecoded()
+	ms.getOrig().MarkModified()
 	return Map(internal.NewMapWrapper(&ms.getOrig().Attributes, ms.getState()))
 }
 
 // DroppedAttributesCount returns the droppedattributescount associated with this InstrumentationScope.
 func (ms InstrumentationScope) DroppedAttributesCount() uint32 {
+	ms.getOrig().EnsureDecoded()
 	return ms.getOrig().DroppedAttributesCount
 }
 
 // SetDroppedAttributesCount replaces the droppedattributescount associated with this InstrumentationScope.
 func (ms InstrumentationScope) SetDroppedAttributesCount(v uint32) {
 	ms.getState().AssertMutable()
+	ms.getOrig().EnsureDecoded()
 	ms.getOrig().DroppedAttributesCount = v
+	ms.getOrig().MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

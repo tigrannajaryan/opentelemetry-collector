@@ -45,33 +45,43 @@ func (ms EntityRef) MoveTo(dest EntityRef) {
 
 // SchemaUrl returns the schemaurl associated with this EntityRef.
 func (ms EntityRef) SchemaUrl() string {
+	ms.getOrig().EnsureDecoded()
 	return ms.getOrig().SchemaUrl
 }
 
 // SetSchemaUrl replaces the schemaurl associated with this EntityRef.
 func (ms EntityRef) SetSchemaUrl(v string) {
 	ms.getState().AssertMutable()
+	ms.getOrig().EnsureDecoded()
 	ms.getOrig().SchemaUrl = v
+	ms.getOrig().MarkModified()
 }
 
 // Type returns the type associated with this EntityRef.
 func (ms EntityRef) Type() string {
+	ms.getOrig().EnsureDecoded()
 	return ms.getOrig().Type
 }
 
 // SetType replaces the type associated with this EntityRef.
 func (ms EntityRef) SetType(v string) {
 	ms.getState().AssertMutable()
+	ms.getOrig().EnsureDecoded()
 	ms.getOrig().Type = v
+	ms.getOrig().MarkModified()
 }
 
 // IdKeys returns the IdKeys associated with this EntityRef.
 func (ms EntityRef) IdKeys() pcommon.StringSlice {
+	ms.getOrig().EnsureDecoded()
+	ms.getOrig().MarkModified()
 	return pcommon.StringSlice(internal.NewStringSliceWrapper(&ms.getOrig().IdKeys, ms.getState()))
 }
 
 // DescriptionKeys returns the DescriptionKeys associated with this EntityRef.
 func (ms EntityRef) DescriptionKeys() pcommon.StringSlice {
+	ms.getOrig().EnsureDecoded()
+	ms.getOrig().MarkModified()
 	return pcommon.StringSlice(internal.NewStringSliceWrapper(&ms.getOrig().DescriptionKeys, ms.getState()))
 }
 

@@ -50,6 +50,8 @@ func (ms Stack) MoveTo(dest Stack) {
 
 // LocationIndices returns the LocationIndices associated with this Stack.
 func (ms Stack) LocationIndices() pcommon.Int32Slice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.Int32Slice(internal.NewInt32SliceWrapper(&ms.orig.LocationIndices, ms.state))
 }
 

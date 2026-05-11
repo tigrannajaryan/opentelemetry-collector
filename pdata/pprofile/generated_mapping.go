@@ -50,50 +50,64 @@ func (ms Mapping) MoveTo(dest Mapping) {
 
 // MemoryStart returns the memorystart associated with this Mapping.
 func (ms Mapping) MemoryStart() uint64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.MemoryStart
 }
 
 // SetMemoryStart replaces the memorystart associated with this Mapping.
 func (ms Mapping) SetMemoryStart(v uint64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.MemoryStart = v
+	ms.orig.MarkModified()
 }
 
 // MemoryLimit returns the memorylimit associated with this Mapping.
 func (ms Mapping) MemoryLimit() uint64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.MemoryLimit
 }
 
 // SetMemoryLimit replaces the memorylimit associated with this Mapping.
 func (ms Mapping) SetMemoryLimit(v uint64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.MemoryLimit = v
+	ms.orig.MarkModified()
 }
 
 // FileOffset returns the fileoffset associated with this Mapping.
 func (ms Mapping) FileOffset() uint64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.FileOffset
 }
 
 // SetFileOffset replaces the fileoffset associated with this Mapping.
 func (ms Mapping) SetFileOffset(v uint64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.FileOffset = v
+	ms.orig.MarkModified()
 }
 
 // FilenameStrindex returns the filenamestrindex associated with this Mapping.
 func (ms Mapping) FilenameStrindex() int32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.FilenameStrindex
 }
 
 // SetFilenameStrindex replaces the filenamestrindex associated with this Mapping.
 func (ms Mapping) SetFilenameStrindex(v int32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.FilenameStrindex = v
+	ms.orig.MarkModified()
 }
 
 // AttributeIndices returns the AttributeIndices associated with this Mapping.
 func (ms Mapping) AttributeIndices() pcommon.Int32Slice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.Int32Slice(internal.NewInt32SliceWrapper(&ms.orig.AttributeIndices, ms.state))
 }
 

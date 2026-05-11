@@ -24,6 +24,7 @@ type ProfilesDictionary struct {
 	StringTable    []string
 	AttributeTable []*KeyValueAndUnit
 	StackTable     []*Stack
+	lazy           proto.LazyMessage
 }
 
 var (
@@ -88,6 +89,8 @@ func CopyProfilesDictionary(dest, src *ProfilesDictionary) *ProfilesDictionary {
 	if dest == nil {
 		dest = NewProfilesDictionary()
 	}
+	src.EnsureDecoded()
+	dest.EnsureDecoded()
 	dest.MappingTable = CopyMappingPtrSlice(dest.MappingTable, src.MappingTable)
 
 	dest.LocationTable = CopyLocationPtrSlice(dest.LocationTable, src.LocationTable)
@@ -101,6 +104,8 @@ func CopyProfilesDictionary(dest, src *ProfilesDictionary) *ProfilesDictionary {
 	dest.AttributeTable = CopyKeyValueAndUnitPtrSlice(dest.AttributeTable, src.AttributeTable)
 
 	dest.StackTable = CopyStackPtrSlice(dest.StackTable, src.StackTable)
+
+	dest.MarkModified()
 
 	return dest
 }
@@ -157,8 +162,19 @@ func (orig *ProfilesDictionary) Reset() {
 	*orig = ProfilesDictionary{}
 }
 
+// LazyMessage returns the per-message protobuf lazy state.
+func (orig *ProfilesDictionary) LazyMessage() *proto.LazyMessage {
+	return &orig.lazy
+}
+
+// SetLazyParent records the parent lazy state used for modification bubbling.
+func (orig *ProfilesDictionary) SetLazyParent(parent *proto.LazyMessage) {
+	orig.lazy.SetParent(parent)
+}
+
 // MarshalJSON marshals all properties from the current struct to the destination stream.
 func (orig *ProfilesDictionary) MarshalJSON(dest *json.Stream) {
+	orig.EnsureDecoded()
 	dest.WriteObjectStart()
 	if len(orig.MappingTable) > 0 {
 		dest.WriteObjectField("mappingTable")
@@ -236,6 +252,7 @@ func (orig *ProfilesDictionary) MarshalJSON(dest *json.Stream) {
 
 // UnmarshalJSON unmarshals all properties from the current struct from the source iterator.
 func (orig *ProfilesDictionary) UnmarshalJSON(iter *json.Iterator) {
+	orig.Reset()
 	for f := iter.ReadObject(); f != ""; f = iter.ReadObject() {
 		switch f {
 		case "mappingTable", "mapping_table":
@@ -286,6 +303,10 @@ func (orig *ProfilesDictionary) UnmarshalJSON(iter *json.Iterator) {
 }
 
 func (orig *ProfilesDictionary) SizeProto() int {
+	if orig.lazy.HasBytes() {
+		return len(orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -321,6 +342,10 @@ func (orig *ProfilesDictionary) SizeProto() int {
 }
 
 func (orig *ProfilesDictionary) MarshalProto(buf []byte) int {
+	if orig.lazy.HasBytes() {
+		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
@@ -378,6 +403,75 @@ func (orig *ProfilesDictionary) MarshalProto(buf []byte) int {
 }
 
 func (orig *ProfilesDictionary) UnmarshalProto(buf []byte) error {
+	if err := validateProfilesDictionaryProto(buf); err != nil {
+		return err
+	}
+	orig.Reset()
+	orig.lazy.Init(buf, nil)
+	return nil
+}
+
+// EnsureDecoded materializes this message's direct fields from the attached
+// protobuf bytes. Embedded messages keep their own byte references and are
+// decoded by their getters.
+func (orig *ProfilesDictionary) EnsureDecoded() {
+	if orig == nil || orig.lazy.IsDecoded() {
+		return
+	}
+	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
+		// UnmarshalProto validates the full message tree before storing bytes,
+		// so a decode failure here means the message was mutated externally.
+		panic(err)
+	}
+	orig.lazy.MarkDecoded()
+}
+
+// MarkModified records that this message must be re-encoded from fields.
+func (orig *ProfilesDictionary) MarkModified() {
+	orig.EnsureDecoded()
+	orig.lazy.MarkModified()
+}
+
+// DecodeAll recursively materializes this message tree and clears lazy state.
+// It is primarily useful for tests and operations that require ordinary struct
+// equality instead of protobuf passthrough semantics.
+func (orig *ProfilesDictionary) DecodeAll() {
+	orig.EnsureDecoded()
+	for i := range orig.MappingTable {
+		if orig.MappingTable[i] != nil {
+			orig.MappingTable[i].DecodeAll()
+		}
+	}
+	for i := range orig.LocationTable {
+		if orig.LocationTable[i] != nil {
+			orig.LocationTable[i].DecodeAll()
+		}
+	}
+	for i := range orig.FunctionTable {
+		if orig.FunctionTable[i] != nil {
+			orig.FunctionTable[i].DecodeAll()
+		}
+	}
+	for i := range orig.LinkTable {
+		if orig.LinkTable[i] != nil {
+			orig.LinkTable[i].DecodeAll()
+		}
+	}
+
+	for i := range orig.AttributeTable {
+		if orig.AttributeTable[i] != nil {
+			orig.AttributeTable[i].DecodeAll()
+		}
+	}
+	for i := range orig.StackTable {
+		if orig.StackTable[i] != nil {
+			orig.StackTable[i].DecodeAll()
+		}
+	}
+	orig.lazy.Clear()
+}
+
+func validateProfilesDictionaryProto(buf []byte) error {
 	var err error
 	var fieldNum int32
 	var wireType proto.WireType
@@ -385,7 +479,128 @@ func (orig *ProfilesDictionary) UnmarshalProto(buf []byte) error {
 	l := len(buf)
 	pos := 0
 	for pos < l {
-		// If in a group parsing, move to the next tag.
+		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
+		if err != nil {
+			return err
+		}
+		switch fieldNum {
+
+		case 1:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field MappingTable", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateMappingProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 2:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field LocationTable", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateLocationProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 3:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field FunctionTable", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateFunctionProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 4:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field LinkTable", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateLinkProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 5:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field StringTable", wireType)
+			}
+			_, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 6:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field AttributeTable", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateKeyValueAndUnitProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 7:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field StackTable", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateStackProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+		default:
+			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (orig *ProfilesDictionary) decodeProto(buf []byte) error {
+	var err error
+	var fieldNum int32
+	var wireType proto.WireType
+
+	l := len(buf)
+	pos := 0
+	for pos < l {
 		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
 		if err != nil {
 			return err
@@ -403,10 +618,7 @@ func (orig *ProfilesDictionary) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.MappingTable = append(orig.MappingTable, NewMapping())
-			err = orig.MappingTable[len(orig.MappingTable)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			orig.MappingTable[len(orig.MappingTable)-1].lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 2:
 			if wireType != proto.WireTypeLen {
@@ -419,10 +631,7 @@ func (orig *ProfilesDictionary) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.LocationTable = append(orig.LocationTable, NewLocation())
-			err = orig.LocationTable[len(orig.LocationTable)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			orig.LocationTable[len(orig.LocationTable)-1].lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 3:
 			if wireType != proto.WireTypeLen {
@@ -435,10 +644,7 @@ func (orig *ProfilesDictionary) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.FunctionTable = append(orig.FunctionTable, NewFunction())
-			err = orig.FunctionTable[len(orig.FunctionTable)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			orig.FunctionTable[len(orig.FunctionTable)-1].lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 4:
 			if wireType != proto.WireTypeLen {
@@ -451,10 +657,7 @@ func (orig *ProfilesDictionary) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.LinkTable = append(orig.LinkTable, NewLink())
-			err = orig.LinkTable[len(orig.LinkTable)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			orig.LinkTable[len(orig.LinkTable)-1].lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 5:
 			if wireType != proto.WireTypeLen {
@@ -479,10 +682,7 @@ func (orig *ProfilesDictionary) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.AttributeTable = append(orig.AttributeTable, NewKeyValueAndUnit())
-			err = orig.AttributeTable[len(orig.AttributeTable)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			orig.AttributeTable[len(orig.AttributeTable)-1].lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 7:
 			if wireType != proto.WireTypeLen {
@@ -495,10 +695,7 @@ func (orig *ProfilesDictionary) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.StackTable = append(orig.StackTable, NewStack())
-			err = orig.StackTable[len(orig.StackTable)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			orig.StackTable[len(orig.StackTable)-1].lazy.Init(buf[startPos:pos], &orig.lazy)
 		default:
 			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
 			if err != nil {

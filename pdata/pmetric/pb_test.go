@@ -44,6 +44,7 @@ func TestMetricsProtoWireCompatibility(t *testing.T) {
 	unmarshaler := &ProtoUnmarshaler{}
 	td2, err = unmarshaler.UnmarshalMetrics(wire2)
 	require.NoError(t, err)
+	td2.getOrig().DecodeAll()
 
 	// Now compare that the original and final ProtoBuf messages are the same.
 	// This proves that goproto and gogoproto marshaling/unmarshaling are wire compatible.

@@ -49,18 +49,23 @@ func (ms Histogram) MoveTo(dest Histogram) {
 
 // DataPoints returns the DataPoints associated with this Histogram.
 func (ms Histogram) DataPoints() HistogramDataPointSlice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return newHistogramDataPointSlice(&ms.orig.DataPoints, ms.state)
 }
 
 // AggregationTemporality returns the aggregationtemporality associated with this Histogram.
 func (ms Histogram) AggregationTemporality() AggregationTemporality {
+	ms.orig.EnsureDecoded()
 	return AggregationTemporality(ms.orig.AggregationTemporality)
 }
 
 // SetAggregationTemporality replaces the aggregationtemporality associated with this Histogram.
 func (ms Histogram) SetAggregationTemporality(v AggregationTemporality) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.AggregationTemporality = internal.AggregationTemporality(v)
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

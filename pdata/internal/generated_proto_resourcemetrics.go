@@ -21,6 +21,7 @@ type ResourceMetrics struct {
 	ScopeMetrics           []*ScopeMetrics
 	SchemaUrl              string
 	DeprecatedScopeMetrics []*ScopeMetrics
+	lazy                   proto.LazyMessage
 }
 
 var (
@@ -74,12 +75,16 @@ func CopyResourceMetrics(dest, src *ResourceMetrics) *ResourceMetrics {
 	if dest == nil {
 		dest = NewResourceMetrics()
 	}
+	src.EnsureDecoded()
+	dest.EnsureDecoded()
 	CopyResource(&dest.Resource, &src.Resource)
 
 	dest.ScopeMetrics = CopyScopeMetricsPtrSlice(dest.ScopeMetrics, src.ScopeMetrics)
 
 	dest.SchemaUrl = src.SchemaUrl
 	dest.DeprecatedScopeMetrics = CopyScopeMetricsPtrSlice(dest.DeprecatedScopeMetrics, src.DeprecatedScopeMetrics)
+
+	dest.MarkModified()
 
 	return dest
 }
@@ -136,8 +141,19 @@ func (orig *ResourceMetrics) Reset() {
 	*orig = ResourceMetrics{}
 }
 
+// LazyMessage returns the per-message protobuf lazy state.
+func (orig *ResourceMetrics) LazyMessage() *proto.LazyMessage {
+	return &orig.lazy
+}
+
+// SetLazyParent records the parent lazy state used for modification bubbling.
+func (orig *ResourceMetrics) SetLazyParent(parent *proto.LazyMessage) {
+	orig.lazy.SetParent(parent)
+}
+
 // MarshalJSON marshals all properties from the current struct to the destination stream.
 func (orig *ResourceMetrics) MarshalJSON(dest *json.Stream) {
+	orig.EnsureDecoded()
 	dest.WriteObjectStart()
 	dest.WriteObjectField("resource")
 	orig.Resource.MarshalJSON(dest)
@@ -170,6 +186,7 @@ func (orig *ResourceMetrics) MarshalJSON(dest *json.Stream) {
 
 // UnmarshalJSON unmarshals all properties from the current struct from the source iterator.
 func (orig *ResourceMetrics) UnmarshalJSON(iter *json.Iterator) {
+	orig.Reset()
 	for f := iter.ReadObject(); f != ""; f = iter.ReadObject() {
 		switch f {
 		case "resource":
@@ -196,6 +213,10 @@ func (orig *ResourceMetrics) UnmarshalJSON(iter *json.Iterator) {
 }
 
 func (orig *ResourceMetrics) SizeProto() int {
+	if orig.lazy.HasBytes() {
+		return len(orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -218,6 +239,10 @@ func (orig *ResourceMetrics) SizeProto() int {
 }
 
 func (orig *ResourceMetrics) MarshalProto(buf []byte) int {
+	if orig.lazy.HasBytes() {
+		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
@@ -255,6 +280,56 @@ func (orig *ResourceMetrics) MarshalProto(buf []byte) int {
 }
 
 func (orig *ResourceMetrics) UnmarshalProto(buf []byte) error {
+	if err := validateResourceMetricsProto(buf); err != nil {
+		return err
+	}
+	orig.Reset()
+	orig.lazy.Init(buf, nil)
+	return nil
+}
+
+// EnsureDecoded materializes this message's direct fields from the attached
+// protobuf bytes. Embedded messages keep their own byte references and are
+// decoded by their getters.
+func (orig *ResourceMetrics) EnsureDecoded() {
+	if orig == nil || orig.lazy.IsDecoded() {
+		return
+	}
+	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
+		// UnmarshalProto validates the full message tree before storing bytes,
+		// so a decode failure here means the message was mutated externally.
+		panic(err)
+	}
+	orig.lazy.MarkDecoded()
+}
+
+// MarkModified records that this message must be re-encoded from fields.
+func (orig *ResourceMetrics) MarkModified() {
+	orig.EnsureDecoded()
+	orig.lazy.MarkModified()
+}
+
+// DecodeAll recursively materializes this message tree and clears lazy state.
+// It is primarily useful for tests and operations that require ordinary struct
+// equality instead of protobuf passthrough semantics.
+func (orig *ResourceMetrics) DecodeAll() {
+	orig.EnsureDecoded()
+	orig.Resource.DecodeAll()
+	for i := range orig.ScopeMetrics {
+		if orig.ScopeMetrics[i] != nil {
+			orig.ScopeMetrics[i].DecodeAll()
+		}
+	}
+
+	for i := range orig.DeprecatedScopeMetrics {
+		if orig.DeprecatedScopeMetrics[i] != nil {
+			orig.DeprecatedScopeMetrics[i].DecodeAll()
+		}
+	}
+	orig.lazy.Clear()
+}
+
+func validateResourceMetricsProto(buf []byte) error {
 	var err error
 	var fieldNum int32
 	var wireType proto.WireType
@@ -262,7 +337,83 @@ func (orig *ResourceMetrics) UnmarshalProto(buf []byte) error {
 	l := len(buf)
 	pos := 0
 	for pos < l {
-		// If in a group parsing, move to the next tag.
+		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
+		if err != nil {
+			return err
+		}
+		switch fieldNum {
+
+		case 1:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Resource", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateResourceProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 2:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field ScopeMetrics", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateScopeMetricsProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 3:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field SchemaUrl", wireType)
+			}
+			_, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 1000:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field DeprecatedScopeMetrics", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateScopeMetricsProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+		default:
+			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (orig *ResourceMetrics) decodeProto(buf []byte) error {
+	var err error
+	var fieldNum int32
+	var wireType proto.WireType
+
+	l := len(buf)
+	pos := 0
+	for pos < l {
 		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
 		if err != nil {
 			return err
@@ -280,10 +431,7 @@ func (orig *ResourceMetrics) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 
-			err = orig.Resource.UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			(&orig.Resource).lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 2:
 			if wireType != proto.WireTypeLen {
@@ -296,10 +444,7 @@ func (orig *ResourceMetrics) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.ScopeMetrics = append(orig.ScopeMetrics, NewScopeMetrics())
-			err = orig.ScopeMetrics[len(orig.ScopeMetrics)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			orig.ScopeMetrics[len(orig.ScopeMetrics)-1].lazy.Init(buf[startPos:pos], &orig.lazy)
 
 		case 3:
 			if wireType != proto.WireTypeLen {
@@ -324,10 +469,7 @@ func (orig *ResourceMetrics) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.DeprecatedScopeMetrics = append(orig.DeprecatedScopeMetrics, NewScopeMetrics())
-			err = orig.DeprecatedScopeMetrics[len(orig.DeprecatedScopeMetrics)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			orig.DeprecatedScopeMetrics[len(orig.DeprecatedScopeMetrics)-1].lazy.Init(buf[startPos:pos], &orig.lazy)
 		default:
 			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
 			if err != nil {

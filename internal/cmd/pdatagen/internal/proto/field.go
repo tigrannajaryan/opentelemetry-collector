@@ -31,6 +31,10 @@ type FieldInterface interface {
 
 	GenUnmarshalProto() string
 
+	GenValidateProto() string
+
+	GenDecodeAllProto() string
+
 	GenMessageField() string
 
 	GenOneOfMessages() string
@@ -220,6 +224,7 @@ func (pf *Field) getTemplateFields() map[string]any {
 		"goType":            pf.GoType(),
 		"defaultValue":      pf.DefaultValue(),
 		"testValue":         pf.TestValue(),
+		"lazyMessage":       pf.Type == TypeMessage && pf.MessageName != "TraceID" && pf.MessageName != "SpanID" && pf.MessageName != "ProfileID",
 	}
 }
 

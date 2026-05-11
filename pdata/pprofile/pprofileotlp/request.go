@@ -51,6 +51,7 @@ func (ms ExportRequest) UnmarshalProto(data []byte) error {
 	if err != nil {
 		return err
 	}
+	ms.orig.DecodeAll()
 	otlp.MigrateProfiles(ms.orig.ResourceProfiles)
 	return nil
 }

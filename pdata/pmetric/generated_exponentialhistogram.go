@@ -50,18 +50,23 @@ func (ms ExponentialHistogram) MoveTo(dest ExponentialHistogram) {
 
 // DataPoints returns the DataPoints associated with this ExponentialHistogram.
 func (ms ExponentialHistogram) DataPoints() ExponentialHistogramDataPointSlice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return newExponentialHistogramDataPointSlice(&ms.orig.DataPoints, ms.state)
 }
 
 // AggregationTemporality returns the aggregationtemporality associated with this ExponentialHistogram.
 func (ms ExponentialHistogram) AggregationTemporality() AggregationTemporality {
+	ms.orig.EnsureDecoded()
 	return AggregationTemporality(ms.orig.AggregationTemporality)
 }
 
 // SetAggregationTemporality replaces the aggregationtemporality associated with this ExponentialHistogram.
 func (ms ExponentialHistogram) SetAggregationTemporality(v AggregationTemporality) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.AggregationTemporality = internal.AggregationTemporality(v)
+	ms.orig.MarkModified()
 }
 
 // CopyTo copies all properties from the current struct overriding the destination.

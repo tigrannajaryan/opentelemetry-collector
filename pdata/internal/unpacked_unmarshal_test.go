@@ -42,6 +42,7 @@ func TestUnmarshalUnpackedHistogramDataPoint(t *testing.T) {
 	var hdp HistogramDataPoint
 	err := hdp.UnmarshalProto(pb)
 	require.NoError(t, err)
+	hdp.DecodeAll()
 	assert.Equal(t, HistogramDataPoint{
 		BucketCounts:   []uint64{42},
 		ExplicitBounds: []float64{42.0},
@@ -56,6 +57,7 @@ func TestUnmarshalUnpackedExponentialHistogramDataPoint_Buckets(t *testing.T) {
 	var ehdpb ExponentialHistogramDataPointBuckets
 	err := ehdpb.UnmarshalProto(pb)
 	require.NoError(t, err)
+	ehdpb.DecodeAll()
 	assert.Equal(t, ExponentialHistogramDataPointBuckets{
 		BucketCounts: []uint64{42},
 	}, ehdpb)

@@ -50,6 +50,7 @@ func TestGrpc(t *testing.T) {
 
 	resp, err := logClient.Export(context.Background(), generateLogsRequest())
 	require.NoError(t, err)
+	resp.orig.DecodeAll()
 	assert.Equal(t, NewExportResponse(), resp)
 }
 

@@ -49,6 +49,7 @@ func (ms ExportResponse) MoveTo(dest ExportResponse) {
 
 // PartialSuccess returns the partialsuccess associated with this ExportResponse.
 func (ms ExportResponse) PartialSuccess() ExportPartialSuccess {
+	ms.orig.EnsureDecoded()
 	return newExportPartialSuccess(&ms.orig.PartialSuccess, ms.state)
 }
 

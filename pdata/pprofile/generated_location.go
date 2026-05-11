@@ -50,33 +50,43 @@ func (ms Location) MoveTo(dest Location) {
 
 // MappingIndex returns the mappingindex associated with this Location.
 func (ms Location) MappingIndex() int32 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.MappingIndex
 }
 
 // SetMappingIndex replaces the mappingindex associated with this Location.
 func (ms Location) SetMappingIndex(v int32) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.MappingIndex = v
+	ms.orig.MarkModified()
 }
 
 // Address returns the address associated with this Location.
 func (ms Location) Address() uint64 {
+	ms.orig.EnsureDecoded()
 	return ms.orig.Address
 }
 
 // SetAddress replaces the address associated with this Location.
 func (ms Location) SetAddress(v uint64) {
 	ms.state.AssertMutable()
+	ms.orig.EnsureDecoded()
 	ms.orig.Address = v
+	ms.orig.MarkModified()
 }
 
 // Lines returns the Lines associated with this Location.
 func (ms Location) Lines() LineSlice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return newLineSlice(&ms.orig.Lines, ms.state)
 }
 
 // AttributeIndices returns the AttributeIndices associated with this Location.
 func (ms Location) AttributeIndices() pcommon.Int32Slice {
+	ms.orig.EnsureDecoded()
+	ms.orig.MarkModified()
 	return pcommon.Int32Slice(internal.NewInt32SliceWrapper(&ms.orig.AttributeIndices, ms.state))
 }
 

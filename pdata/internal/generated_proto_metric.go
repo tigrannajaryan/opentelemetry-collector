@@ -17,6 +17,7 @@ import (
 
 func (m *Metric) GetData() any {
 	if m != nil {
+		m.EnsureDecoded()
 		return m.Data
 	}
 	return nil
@@ -85,6 +86,7 @@ type Metric struct {
 	Unit        string
 	Data        any
 	Metadata    []KeyValue
+	lazy        proto.LazyMessage
 }
 
 var (
@@ -186,6 +188,8 @@ func CopyMetric(dest, src *Metric) *Metric {
 	if dest == nil {
 		dest = NewMetric()
 	}
+	src.EnsureDecoded()
+	dest.EnsureDecoded()
 	dest.Name = src.Name
 	dest.Description = src.Description
 	dest.Unit = src.Unit
@@ -250,6 +254,8 @@ func CopyMetric(dest, src *Metric) *Metric {
 	}
 	dest.Metadata = CopyKeyValueSlice(dest.Metadata, src.Metadata)
 
+	dest.MarkModified()
+
 	return dest
 }
 
@@ -305,8 +311,19 @@ func (orig *Metric) Reset() {
 	*orig = Metric{}
 }
 
+// LazyMessage returns the per-message protobuf lazy state.
+func (orig *Metric) LazyMessage() *proto.LazyMessage {
+	return &orig.lazy
+}
+
+// SetLazyParent records the parent lazy state used for modification bubbling.
+func (orig *Metric) SetLazyParent(parent *proto.LazyMessage) {
+	orig.lazy.SetParent(parent)
+}
+
 // MarshalJSON marshals all properties from the current struct to the destination stream.
 func (orig *Metric) MarshalJSON(dest *json.Stream) {
+	orig.EnsureDecoded()
 	dest.WriteObjectStart()
 	if orig.Name != "" {
 		dest.WriteObjectField("name")
@@ -362,6 +379,7 @@ func (orig *Metric) MarshalJSON(dest *json.Stream) {
 
 // UnmarshalJSON unmarshals all properties from the current struct from the source iterator.
 func (orig *Metric) UnmarshalJSON(iter *json.Iterator) {
+	orig.Reset()
 	for f := iter.ReadObject(); f != ""; f = iter.ReadObject() {
 		switch f {
 		case "name":
@@ -445,6 +463,10 @@ func (orig *Metric) UnmarshalJSON(iter *json.Iterator) {
 }
 
 func (orig *Metric) SizeProto() int {
+	if orig.lazy.HasBytes() {
+		return len(orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	var n int
 	var l int
 	_ = l
@@ -501,6 +523,10 @@ func (orig *Metric) SizeProto() int {
 }
 
 func (orig *Metric) MarshalProto(buf []byte) int {
+	if orig.lazy.HasBytes() {
+		return copy(buf[len(buf)-len(orig.lazy.Bytes()):], orig.lazy.Bytes())
+	}
+	orig.EnsureDecoded()
 	pos := len(buf)
 	var l int
 	_ = l
@@ -581,6 +607,68 @@ func (orig *Metric) MarshalProto(buf []byte) int {
 }
 
 func (orig *Metric) UnmarshalProto(buf []byte) error {
+	if err := validateMetricProto(buf); err != nil {
+		return err
+	}
+	orig.Reset()
+	orig.lazy.Init(buf, nil)
+	return nil
+}
+
+// EnsureDecoded materializes this message's direct fields from the attached
+// protobuf bytes. Embedded messages keep their own byte references and are
+// decoded by their getters.
+func (orig *Metric) EnsureDecoded() {
+	if orig == nil || orig.lazy.IsDecoded() {
+		return
+	}
+	if err := orig.decodeProto(orig.lazy.Bytes()); err != nil {
+		// UnmarshalProto validates the full message tree before storing bytes,
+		// so a decode failure here means the message was mutated externally.
+		panic(err)
+	}
+	orig.lazy.MarkDecoded()
+}
+
+// MarkModified records that this message must be re-encoded from fields.
+func (orig *Metric) MarkModified() {
+	orig.EnsureDecoded()
+	orig.lazy.MarkModified()
+}
+
+// DecodeAll recursively materializes this message tree and clears lazy state.
+// It is primarily useful for tests and operations that require ordinary struct
+// equality instead of protobuf passthrough semantics.
+func (orig *Metric) DecodeAll() {
+	orig.EnsureDecoded()
+
+	if ov, ok := orig.Data.(*Metric_Gauge); ok && ov.Gauge != nil {
+		ov.Gauge.DecodeAll()
+	}
+
+	if ov, ok := orig.Data.(*Metric_Sum); ok && ov.Sum != nil {
+		ov.Sum.DecodeAll()
+	}
+
+	if ov, ok := orig.Data.(*Metric_Histogram); ok && ov.Histogram != nil {
+		ov.Histogram.DecodeAll()
+	}
+
+	if ov, ok := orig.Data.(*Metric_ExponentialHistogram); ok && ov.ExponentialHistogram != nil {
+		ov.ExponentialHistogram.DecodeAll()
+	}
+
+	if ov, ok := orig.Data.(*Metric_Summary); ok && ov.Summary != nil {
+		ov.Summary.DecodeAll()
+	}
+
+	for i := range orig.Metadata {
+		orig.Metadata[i].DecodeAll()
+	}
+	orig.lazy.Clear()
+}
+
+func validateMetricProto(buf []byte) error {
 	var err error
 	var fieldNum int32
 	var wireType proto.WireType
@@ -588,7 +676,146 @@ func (orig *Metric) UnmarshalProto(buf []byte) error {
 	l := len(buf)
 	pos := 0
 	for pos < l {
-		// If in a group parsing, move to the next tag.
+		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
+		if err != nil {
+			return err
+		}
+		switch fieldNum {
+
+		case 1:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			_, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 2:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			_, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 3:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Unit", wireType)
+			}
+			_, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+
+		case 5:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Gauge", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateGaugeProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 7:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sum", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateSumProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 9:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Histogram", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateHistogramProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 10:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExponentialHistogram", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateExponentialHistogramProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 11:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Summary", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateSummaryProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+
+		case 12:
+			if wireType != proto.WireTypeLen {
+				return fmt.Errorf("proto: wrong wireType = %d for field Metadata", wireType)
+			}
+			var length int
+			length, pos, err = proto.ConsumeLen(buf, pos)
+			if err != nil {
+				return err
+			}
+			startPos := pos - length
+			err = validateKeyValueProto(buf[startPos:pos])
+			if err != nil {
+				return err
+			}
+		default:
+			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (orig *Metric) decodeProto(buf []byte) error {
+	var err error
+	var fieldNum int32
+	var wireType proto.WireType
+
+	l := len(buf)
+	pos := 0
+	for pos < l {
 		fieldNum, wireType, pos, err = proto.ConsumeTag(buf, pos)
 		if err != nil {
 			return err
@@ -648,10 +875,7 @@ func (orig *Metric) UnmarshalProto(buf []byte) error {
 				ov = ProtoPoolMetric_Gauge.Get().(*Metric_Gauge)
 			}
 			ov.Gauge = NewGauge()
-			err = ov.Gauge.UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			ov.Gauge.lazy.Init(buf[startPos:pos], &orig.lazy)
 			orig.Data = ov
 
 		case 7:
@@ -671,10 +895,7 @@ func (orig *Metric) UnmarshalProto(buf []byte) error {
 				ov = ProtoPoolMetric_Sum.Get().(*Metric_Sum)
 			}
 			ov.Sum = NewSum()
-			err = ov.Sum.UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			ov.Sum.lazy.Init(buf[startPos:pos], &orig.lazy)
 			orig.Data = ov
 
 		case 9:
@@ -694,10 +915,7 @@ func (orig *Metric) UnmarshalProto(buf []byte) error {
 				ov = ProtoPoolMetric_Histogram.Get().(*Metric_Histogram)
 			}
 			ov.Histogram = NewHistogram()
-			err = ov.Histogram.UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			ov.Histogram.lazy.Init(buf[startPos:pos], &orig.lazy)
 			orig.Data = ov
 
 		case 10:
@@ -717,10 +935,7 @@ func (orig *Metric) UnmarshalProto(buf []byte) error {
 				ov = ProtoPoolMetric_ExponentialHistogram.Get().(*Metric_ExponentialHistogram)
 			}
 			ov.ExponentialHistogram = NewExponentialHistogram()
-			err = ov.ExponentialHistogram.UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			ov.ExponentialHistogram.lazy.Init(buf[startPos:pos], &orig.lazy)
 			orig.Data = ov
 
 		case 11:
@@ -740,10 +955,7 @@ func (orig *Metric) UnmarshalProto(buf []byte) error {
 				ov = ProtoPoolMetric_Summary.Get().(*Metric_Summary)
 			}
 			ov.Summary = NewSummary()
-			err = ov.Summary.UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			ov.Summary.lazy.Init(buf[startPos:pos], &orig.lazy)
 			orig.Data = ov
 
 		case 12:
@@ -757,10 +969,7 @@ func (orig *Metric) UnmarshalProto(buf []byte) error {
 			}
 			startPos := pos - length
 			orig.Metadata = append(orig.Metadata, KeyValue{})
-			err = orig.Metadata[len(orig.Metadata)-1].UnmarshalProto(buf[startPos:pos])
-			if err != nil {
-				return err
-			}
+			(&orig.Metadata[len(orig.Metadata)-1]).lazy.Init(buf[startPos:pos], &orig.lazy)
 		default:
 			pos, err = proto.ConsumeUnknown(buf, pos, wireType)
 			if err != nil {
