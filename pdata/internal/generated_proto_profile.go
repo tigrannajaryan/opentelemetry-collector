@@ -19,13 +19,13 @@ import (
 // Profile are an implementation of the pprofextended data model.
 
 type Profile struct {
+	SampleType             ValueType
+	PeriodType             ValueType
+	lazy                   proto.LazyMessage
 	OriginalPayloadFormat  string
 	Samples                []*Sample
 	OriginalPayload        []byte
 	AttributeIndices       []int32
-	SampleType             ValueType
-	PeriodType             ValueType
-	lazy                   proto.LazyMessage
 	TimeUnixNano           uint64
 	DurationNano           uint64
 	Period                 int64

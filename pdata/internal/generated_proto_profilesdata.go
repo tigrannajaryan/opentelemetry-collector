@@ -19,9 +19,9 @@ import (
 // OR can be embedded by other protocols that transfer OTLP profiles data but do not
 // implement the OTLP protocol.
 type ProfilesData struct {
-	ResourceProfiles []*ResourceProfiles
 	Dictionary       ProfilesDictionary
 	lazy             proto.LazyMessage
+	ResourceProfiles []*ResourceProfiles
 }
 
 var (

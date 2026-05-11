@@ -10,6 +10,10 @@ package proto // import "go.opentelemetry.io/collector/pdata/internal/proto"
 // bytes and walks up the parent chain so a changed child also forces all parents
 // to reassemble their protobuf output.
 type LazyMessage struct {
+	state *lazyMessageState
+}
+
+type lazyMessageState struct {
 	parent   *LazyMessage
 	bytes    []byte
 	decoded  bool
@@ -18,31 +22,46 @@ type LazyMessage struct {
 
 // Init attaches protobuf wire bytes to a message and records its parent.
 func (m *LazyMessage) Init(bytes []byte, parent *LazyMessage) {
-	m.bytes = bytes
-	m.parent = parent
-	m.decoded = false
-	m.modified = false
+	m.state = &lazyMessageState{
+		parent: parent,
+		bytes:  bytes,
+	}
 }
 
 // SetParent updates the parent message used for modification propagation.
 func (m *LazyMessage) SetParent(parent *LazyMessage) {
-	if m.parent != parent {
+	if parent == nil {
+		if m.state != nil {
+			m.state.parent = nil
+		}
+		return
+	}
+	if m.state == nil {
+		m.state = &lazyMessageState{parent: parent}
+		return
+	}
+	if m.state.parent != parent {
 		// A previous modification only proves that the old parent chain was
 		// invalidated. Re-parenting needs a fresh propagation on the next
 		// mutation so the new ancestors cannot keep stale wire bytes.
-		m.modified = false
+		m.state.modified = false
 	}
-	m.parent = parent
+	m.state.parent = parent
 }
 
 // Bytes returns the attached protobuf wire bytes.
 func (m *LazyMessage) Bytes() []byte {
-	return m.bytes
+	state := m.state
+	if state == nil {
+		return nil
+	}
+	return state.bytes
 }
 
 // HasBytes returns true when the message can still be marshaled from wire bytes.
 func (m *LazyMessage) HasBytes() bool {
-	return m.bytes != nil
+	state := m.state
+	return state != nil && state.bytes != nil
 }
 
 // MutationMarker returns m when mutations to a wrapper that points inside this
@@ -54,7 +73,8 @@ func (m *LazyMessage) HasBytes() bool {
 // can be materialized independently while an ancestor keeps reusable bytes, and
 // mutating the child must still bubble to that ancestor.
 func (m *LazyMessage) MutationMarker() *LazyMessage {
-	if m == nil || m.modified || (m.bytes == nil && m.parent == nil) {
+	state := m.state
+	if state == nil || state.modified || (state.bytes == nil && state.parent == nil) {
 		return nil
 	}
 	return m
@@ -69,13 +89,15 @@ func (m *LazyMessage) IsDecoded() bool {
 // It is intentionally tiny so generated EnsureDecoded methods have an inlinable
 // fast path for the common already-decoded or locally-built message.
 func (m *LazyMessage) NeedsDecode() bool {
-	return m.bytes != nil && !m.decoded
+	state := m.state
+	return state != nil && state.bytes != nil && !state.decoded
 }
 
 // MarkDecoded records that in-memory fields have been populated from the bytes.
 func (m *LazyMessage) MarkDecoded() {
-	if m.bytes != nil {
-		m.decoded = true
+	state := m.state
+	if state != nil && state.bytes != nil {
+		state.decoded = true
 	}
 }
 
@@ -92,27 +114,30 @@ func (m *LazyMessage) MarkDecoded() {
 func (m *LazyMessage) MarkModified() {
 	// Keep the common already-modified and no-lazy-state paths in this tiny
 	// method so callers can inline the no-op case.
-	if m == nil || m.modified || (m.bytes == nil && m.parent == nil) {
+	state := m.state
+	if state == nil || state.modified || (state.bytes == nil && state.parent == nil) {
 		return
 	}
-	m.markModified()
+	m.markModified(state)
 }
 
-func (m *LazyMessage) markModified() {
-	m.modified = true
-	if m.bytes != nil {
-		m.bytes = nil
-		m.decoded = true
+func (m *LazyMessage) markModified(state *lazyMessageState) {
+	state.modified = true
+	if state.bytes != nil {
+		state.bytes = nil
+		state.decoded = true
 	}
-	for parent := m.parent; parent != nil; parent = parent.parent {
-		if parent.modified || (parent.bytes == nil && parent.parent == nil) {
+	for parent := state.parent; parent != nil; {
+		parentState := parent.state
+		if parentState == nil || parentState.modified || (parentState.bytes == nil && parentState.parent == nil) {
 			return
 		}
-		parent.modified = true
-		if parent.bytes != nil {
-			parent.bytes = nil
-			parent.decoded = true
+		parentState.modified = true
+		if parentState.bytes != nil {
+			parentState.bytes = nil
+			parentState.decoded = true
 		}
+		parent = parentState.parent
 	}
 }
 

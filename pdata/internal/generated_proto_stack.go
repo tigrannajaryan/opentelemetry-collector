@@ -18,8 +18,8 @@ import (
 // Stack represents a stack trace as a list of locations.
 
 type Stack struct {
-	LocationIndices []int32
 	lazy            proto.LazyMessage
+	LocationIndices []int32
 }
 
 var (

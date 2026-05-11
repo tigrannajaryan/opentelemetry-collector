@@ -18,10 +18,10 @@ import (
 // ResourceSpans is a collection of spans from a Resource.
 type ResourceSpans struct {
 	Resource             Resource
-	ScopeSpans           []*ScopeSpans
-	SchemaUrl            string
-	DeprecatedScopeSpans []*ScopeSpans
 	lazy                 proto.LazyMessage
+	SchemaUrl            string
+	ScopeSpans           []*ScopeSpans
+	DeprecatedScopeSpans []*ScopeSpans
 }
 
 var (

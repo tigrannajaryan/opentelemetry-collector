@@ -68,10 +68,10 @@ func (m *RequestContext) GetUnix() *UnixAddr {
 }
 
 type RequestContext struct {
-	SpanContext    *SpanContext
-	ClientMetadata []KeyValue
 	ClientAddress  any
+	SpanContext    *SpanContext
 	lazy           proto.LazyMessage
+	ClientMetadata []KeyValue
 }
 
 var (

@@ -50,9 +50,9 @@ func (m *NumberDataPoint) GetAsInt() int64 {
 // NumberDataPoint is a single data point in a timeseries that describes the time-varying value of a number metric.
 type NumberDataPoint struct {
 	Value             any
+	lazy              proto.LazyMessage
 	Attributes        []KeyValue
 	Exemplars         []Exemplar
-	lazy              proto.LazyMessage
 	StartTimeUnixNano uint64
 	TimeUnixNano      uint64
 	Flags             uint32

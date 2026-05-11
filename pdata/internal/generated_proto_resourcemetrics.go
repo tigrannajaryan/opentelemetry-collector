@@ -18,10 +18,10 @@ import (
 // ResourceMetrics is a collection of metrics from a Resource.
 type ResourceMetrics struct {
 	Resource               Resource
-	ScopeMetrics           []*ScopeMetrics
-	SchemaUrl              string
-	DeprecatedScopeMetrics []*ScopeMetrics
 	lazy                   proto.LazyMessage
+	SchemaUrl              string
+	ScopeMetrics           []*ScopeMetrics
+	DeprecatedScopeMetrics []*ScopeMetrics
 }
 
 var (

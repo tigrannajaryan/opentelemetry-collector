@@ -18,8 +18,8 @@ import (
 // Traces is the top-level struct that is propagated through the traces pipeline.
 // Use NewTraces to create new instance, zero-initialized instance is not valid for use.
 type ExportTraceServiceRequest struct {
-	ResourceSpans []*ResourceSpans
 	lazy          proto.LazyMessage
+	ResourceSpans []*ResourceSpans
 }
 
 var (

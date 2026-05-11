@@ -19,11 +19,11 @@ import (
 
 // HistogramDataPoint is a single data point in a timeseries that describes the time-varying values of a Histogram of values.
 type HistogramDataPoint struct {
+	lazy              proto.LazyMessage
 	Attributes        []KeyValue
 	BucketCounts      []uint64
 	ExplicitBounds    []float64
 	Exemplars         []Exemplar
-	lazy              proto.LazyMessage
 	StartTimeUnixNano uint64
 	TimeUnixNano      uint64
 	Count             uint64

@@ -16,9 +16,9 @@ import (
 )
 
 type IPAddr struct {
-	IP   []byte
-	Zone string
 	lazy proto.LazyMessage
+	Zone string
+	IP   []byte
 }
 
 var (

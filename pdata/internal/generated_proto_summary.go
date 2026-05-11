@@ -17,8 +17,8 @@ import (
 
 // Summary represents the type of a metric that is calculated by aggregating as a Summary of all reported double measurements over a time interval.
 type Summary struct {
-	DataPoints []*SummaryDataPoint
 	lazy       proto.LazyMessage
+	DataPoints []*SummaryDataPoint
 }
 
 var (

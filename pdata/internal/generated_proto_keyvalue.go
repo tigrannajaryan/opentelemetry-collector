@@ -16,9 +16,9 @@ import (
 )
 
 type KeyValue struct {
-	Key         string
 	Value       AnyValue
 	lazy        proto.LazyMessage
+	Key         string
 	KeyStrindex int32
 }
 

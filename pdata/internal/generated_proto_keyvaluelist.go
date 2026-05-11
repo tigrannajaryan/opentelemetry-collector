@@ -17,8 +17,8 @@ import (
 
 // KeyValueList is a list of KeyValue messages. We need KeyValueList as a message since oneof in AnyValue does not allow repeated fields.
 type KeyValueList struct {
-	Values []KeyValue
 	lazy   proto.LazyMessage
+	Values []KeyValue
 }
 
 var (

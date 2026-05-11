@@ -17,10 +17,10 @@ import (
 
 // InstrumentationScope is a message representing the instrumentation scope information.
 type InstrumentationScope struct {
+	lazy                   proto.LazyMessage
 	Name                   string
 	Version                string
 	Attributes             []KeyValue
-	lazy                   proto.LazyMessage
 	DroppedAttributesCount uint32
 }
 

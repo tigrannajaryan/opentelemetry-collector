@@ -17,8 +17,8 @@ import (
 )
 
 type SpanContext struct {
-	TraceState string
 	lazy       proto.LazyMessage
+	TraceState string
 	TraceFlags uint32
 	TraceID    TraceID
 	SpanID     SpanID

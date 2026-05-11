@@ -17,9 +17,9 @@ import (
 
 // Resource is a message representing the resource information.
 type Resource struct {
+	lazy                   proto.LazyMessage
 	Attributes             []KeyValue
 	EntityRefs             []*EntityRef
-	lazy                   proto.LazyMessage
 	DroppedAttributesCount uint32
 }
 

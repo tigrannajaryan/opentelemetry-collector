@@ -22,11 +22,11 @@ import (
 // summary statistics for a population of values, it may optionally contain the
 // distribution of those values across a set of buckets.
 type ExponentialHistogramDataPoint struct {
-	Attributes        []KeyValue
-	Exemplars         []Exemplar
 	Positive          ExponentialHistogramDataPointBuckets
 	Negative          ExponentialHistogramDataPointBuckets
 	lazy              proto.LazyMessage
+	Attributes        []KeyValue
+	Exemplars         []Exemplar
 	StartTimeUnixNano uint64
 	TimeUnixNano      uint64
 	Count             uint64

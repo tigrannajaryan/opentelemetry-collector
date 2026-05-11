@@ -17,8 +17,8 @@ import (
 )
 
 type ProfilesRequest struct {
-	RequestContext *RequestContext
 	ProfilesData   ProfilesData
+	RequestContext *RequestContext
 	lazy           proto.LazyMessage
 	FormatVersion  uint32
 }

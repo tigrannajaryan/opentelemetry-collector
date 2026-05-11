@@ -17,8 +17,8 @@ import (
 
 // ExportPartialSuccess represents the details of a partially successful export request.
 type ExportProfilesPartialSuccess struct {
-	ErrorMessage     string
 	lazy             proto.LazyMessage
+	ErrorMessage     string
 	RejectedProfiles int64
 }
 

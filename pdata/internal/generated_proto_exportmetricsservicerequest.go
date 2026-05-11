@@ -18,8 +18,8 @@ import (
 // Metrics is the top-level struct that is propagated through the metrics pipeline.
 // Use NewMetrics to create new instance, zero-initialized instance is not valid for use.
 type ExportMetricsServiceRequest struct {
-	ResourceMetrics []*ResourceMetrics
 	lazy            proto.LazyMessage
+	ResourceMetrics []*ResourceMetrics
 }
 
 var (

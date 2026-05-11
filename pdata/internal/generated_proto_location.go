@@ -17,9 +17,9 @@ import (
 
 // Location describes function and line table debug information.
 type Location struct {
+	lazy             proto.LazyMessage
 	Lines            []*Line
 	AttributeIndices []int32
-	lazy             proto.LazyMessage
 	Address          uint64
 	MappingIndex     int32
 }

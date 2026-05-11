@@ -17,8 +17,8 @@ import (
 
 // Sum represents the type of a numeric metric that is calculated as a sum of all reported measurements over a time interval.
 type Sum struct {
-	DataPoints             []*NumberDataPoint
 	lazy                   proto.LazyMessage
+	DataPoints             []*NumberDataPoint
 	AggregationTemporality AggregationTemporality
 	IsMonotonic            bool
 }

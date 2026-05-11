@@ -16,11 +16,11 @@ import (
 )
 
 type EntityRef struct {
+	lazy            proto.LazyMessage
 	SchemaUrl       string
 	Type            string
 	IdKeys          []string
 	DescriptionKeys []string
-	lazy            proto.LazyMessage
 }
 
 var (

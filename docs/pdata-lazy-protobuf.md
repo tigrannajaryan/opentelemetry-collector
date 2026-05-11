@@ -13,12 +13,16 @@ tree.
 
 ## Runtime state
 
-Each generated pdata protobuf struct has a `lazy proto.LazyMessage` field. The
-shared state holder is implemented in `pdata/internal/proto/lazy.go` and added
-to generated structs by
+Each generated pdata protobuf struct has a `lazy proto.LazyMessage` field. This
+field is a small handle; the larger lazy state is allocated only when protobuf
+bytes are actually attached by `UnmarshalProto` or child-message lazy
+initialization. Freshly constructed pdata therefore pays one pointer-sized field
+per message instead of carrying the full lazy bookkeeping state. The shared
+state holder is implemented in `pdata/internal/proto/lazy.go` and added to
+generated structs by
 `internal/cmd/pdatagen/internal/proto/templates/message.go.tmpl`.
 
-`proto.LazyMessage` stores:
+The optional state behind `proto.LazyMessage` stores:
 
 * `bytes`: the exact wire bytes for this message, or nil if the message must be
   encoded from fields.
@@ -26,6 +30,8 @@ to generated structs by
   bytes when a child changes.
 * `decoded`: whether this message's direct fields have already been populated
   from `bytes`.
+* `modified`: whether reusable bytes have already been invalidated for this
+  message and its current parent chain.
 
 The generated message methods use that state as follows:
 

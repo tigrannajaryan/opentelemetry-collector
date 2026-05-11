@@ -16,9 +16,9 @@ import (
 )
 
 type UnixAddr struct {
+	lazy proto.LazyMessage
 	Name string
 	Net  string
-	lazy proto.LazyMessage
 }
 
 var (

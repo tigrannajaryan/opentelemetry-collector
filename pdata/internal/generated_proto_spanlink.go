@@ -20,9 +20,9 @@ import (
 // different trace.
 // See Link definition in OTLP: https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/trace/v1/trace.proto
 type SpanLink struct {
+	lazy                   proto.LazyMessage
 	TraceState             string
 	Attributes             []KeyValue
-	lazy                   proto.LazyMessage
 	DroppedAttributesCount uint32
 	Flags                  uint32
 	TraceId                TraceID

@@ -18,9 +18,9 @@ import (
 // ScopeProfiles is a collection of profiles from a LibraryInstrumentation.
 type ScopeProfiles struct {
 	Scope     InstrumentationScope
-	Profiles  []*Profile
-	SchemaUrl string
 	lazy      proto.LazyMessage
+	SchemaUrl string
+	Profiles  []*Profile
 }
 
 var (

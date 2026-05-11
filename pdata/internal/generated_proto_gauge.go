@@ -17,8 +17,8 @@ import (
 
 // Gauge represents the type of a numeric metric that always exports the "current value" for every data point.
 type Gauge struct {
-	DataPoints []*NumberDataPoint
 	lazy       proto.LazyMessage
+	DataPoints []*NumberDataPoint
 }
 
 var (

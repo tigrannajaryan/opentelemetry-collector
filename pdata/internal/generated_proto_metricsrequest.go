@@ -17,8 +17,8 @@ import (
 )
 
 type MetricsRequest struct {
-	RequestContext *RequestContext
 	MetricsData    MetricsData
+	RequestContext *RequestContext
 	lazy           proto.LazyMessage
 	FormatVersion  uint32
 }

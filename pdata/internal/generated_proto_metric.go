@@ -81,12 +81,12 @@ func (m *Metric) GetSummary() *Summary {
 // Metric represents one metric as a collection of datapoints.
 // See Metric definition in OTLP: https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/metrics/v1/metrics.proto
 type Metric struct {
+	Data        any
+	lazy        proto.LazyMessage
 	Name        string
 	Description string
 	Unit        string
-	Data        any
 	Metadata    []KeyValue
-	lazy        proto.LazyMessage
 }
 
 var (

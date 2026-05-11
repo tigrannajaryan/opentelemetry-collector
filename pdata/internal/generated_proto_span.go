@@ -19,13 +19,13 @@ import (
 // Span represents a single operation within a trace.
 // See Span definition in OTLP: https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/trace/v1/trace.proto
 type Span struct {
+	Status                 Status
+	lazy                   proto.LazyMessage
 	TraceState             string
 	Name                   string
 	Attributes             []KeyValue
 	Events                 []*SpanEvent
 	Links                  []*SpanLink
-	Status                 Status
-	lazy                   proto.LazyMessage
 	StartTimeUnixNano      uint64
 	EndTimeUnixNano        uint64
 	Flags                  uint32

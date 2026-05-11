@@ -17,6 +17,7 @@ import (
 
 // ProfilesDictionary is the reference table containing all data shared by profiles across the message being sent.
 type ProfilesDictionary struct {
+	lazy           proto.LazyMessage
 	MappingTable   []*Mapping
 	LocationTable  []*Location
 	FunctionTable  []*Function
@@ -24,7 +25,6 @@ type ProfilesDictionary struct {
 	StringTable    []string
 	AttributeTable []*KeyValueAndUnit
 	StackTable     []*Stack
-	lazy           proto.LazyMessage
 }
 
 var (

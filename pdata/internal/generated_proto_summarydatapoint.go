@@ -19,9 +19,9 @@ import (
 
 // SummaryDataPoint is a single data point in a timeseries that describes the time-varying values of a Summary of double values.
 type SummaryDataPoint struct {
+	lazy              proto.LazyMessage
 	Attributes        []KeyValue
 	QuantileValues    []*SummaryDataPointValueAtQuantile
-	lazy              proto.LazyMessage
 	StartTimeUnixNano uint64
 	TimeUnixNano      uint64
 	Count             uint64

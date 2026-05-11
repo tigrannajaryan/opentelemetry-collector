@@ -18,9 +18,9 @@ import (
 // ScopeMetrics is a collection of metrics from a LibraryInstrumentation.
 type ScopeMetrics struct {
 	Scope     InstrumentationScope
-	Metrics   []*Metric
-	SchemaUrl string
 	lazy      proto.LazyMessage
+	SchemaUrl string
+	Metrics   []*Metric
 }
 
 var (

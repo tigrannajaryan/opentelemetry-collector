@@ -19,8 +19,8 @@ import (
 // OR can be embedded by other protocols that transfer OTLP traces data but do not
 // implement the OTLP protocol.
 type TracesData struct {
-	ResourceSpans []*ResourceSpans
 	lazy          proto.LazyMessage
+	ResourceSpans []*ResourceSpans
 }
 
 var (

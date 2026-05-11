@@ -16,9 +16,9 @@ import (
 )
 
 type UDPAddr struct {
+	lazy proto.LazyMessage
 	Zone string
 	IP   []byte
-	lazy proto.LazyMessage
 	Port int64
 }
 

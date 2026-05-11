@@ -18,8 +18,8 @@ import (
 // Status is an optional final status for this span. Semantically, when Status was not
 // set, that means the span ended without errors and to assume Status.Ok (code = 0).
 type Status struct {
-	Message string
 	lazy    proto.LazyMessage
+	Message string
 	Code    StatusCode
 }
 

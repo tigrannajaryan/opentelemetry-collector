@@ -17,8 +17,8 @@ import (
 
 // ArrayValue is a list of AnyValue messages. We need ArrayValue as a message since oneof in AnyValue does not allow repeated fields.
 type ArrayValue struct {
-	Values []AnyValue
 	lazy   proto.LazyMessage
+	Values []AnyValue
 }
 
 var (

@@ -18,8 +18,8 @@ import (
 // Logs is the top-level struct that is propagated through the logs pipeline.
 // Use NewLogs to create new instance, zero-initialized instance is not valid for use.
 type ExportLogsServiceRequest struct {
-	ResourceLogs []*ResourceLogs
 	lazy         proto.LazyMessage
+	ResourceLogs []*ResourceLogs
 }
 
 var (

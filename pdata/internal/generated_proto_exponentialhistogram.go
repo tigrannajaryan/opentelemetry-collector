@@ -18,8 +18,8 @@ import (
 // ExponentialHistogram represents the type of a metric that is calculated by aggregating
 // as a ExponentialHistogram of all reported double measurements over a time interval.
 type ExponentialHistogram struct {
-	DataPoints             []*ExponentialHistogramDataPoint
 	lazy                   proto.LazyMessage
+	DataPoints             []*ExponentialHistogramDataPoint
 	AggregationTemporality AggregationTemporality
 }
 

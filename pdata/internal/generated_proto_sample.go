@@ -18,10 +18,10 @@ import (
 
 // Sample represents each record value encountered within a profiled program.
 type Sample struct {
+	lazy               proto.LazyMessage
 	AttributeIndices   []int32
 	Values             []int64
 	TimestampsUnixNano []uint64
-	lazy               proto.LazyMessage
 	StackIndex         int32
 	LinkIndex          int32
 }

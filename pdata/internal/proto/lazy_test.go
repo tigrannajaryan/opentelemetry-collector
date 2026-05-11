@@ -13,27 +13,27 @@ func TestLazyMessageMarkModifiedIsNoopAfterModified(t *testing.T) {
 	msg.Init([]byte("message"), nil)
 
 	msg.MarkModified()
-	if !msg.modified {
+	if msg.state == nil || !msg.state.modified {
 		t.Fatal("expected message to be marked modified")
 	}
 
-	parent := msg.parent
-	decoded := msg.decoded
-	modified := msg.modified
-	wire := append([]byte(nil), msg.bytes...)
+	parent := msg.state.parent
+	decoded := msg.state.decoded
+	modified := msg.state.modified
+	wire := append([]byte(nil), msg.state.bytes...)
 
 	msg.MarkModified()
 
-	if msg.parent != parent {
+	if msg.state.parent != parent {
 		t.Fatal("second MarkModified changed parent")
 	}
-	if msg.decoded != decoded {
+	if msg.state.decoded != decoded {
 		t.Fatal("second MarkModified changed decoded state")
 	}
-	if msg.modified != modified {
+	if msg.state.modified != modified {
 		t.Fatal("second MarkModified changed modified state")
 	}
-	if !bytes.Equal(msg.bytes, wire) {
+	if !bytes.Equal(msg.state.bytes, wire) {
 		t.Fatal("second MarkModified changed bytes")
 	}
 }
@@ -45,7 +45,7 @@ func TestLazyMessageMarkModifiedClearsChildWhenParentAlreadyModified(t *testing.
 	secondChild.Init([]byte("second-child"), &parent)
 
 	firstChild.MarkModified()
-	if !parent.modified {
+	if parent.state == nil || !parent.state.modified {
 		t.Fatal("expected parent to be marked by first child")
 	}
 
@@ -53,7 +53,7 @@ func TestLazyMessageMarkModifiedClearsChildWhenParentAlreadyModified(t *testing.
 	if secondChild.HasBytes() {
 		t.Fatal("expected second child bytes to be cleared even when parent was already modified")
 	}
-	if !parent.modified {
+	if parent.state == nil || !parent.state.modified {
 		t.Fatal("expected parent to remain marked")
 	}
 }

@@ -17,8 +17,8 @@ import (
 
 // Histogram represents the type of a metric that is calculated by aggregating as a Histogram of all reported measurements over a time interval.
 type Histogram struct {
-	DataPoints             []*HistogramDataPoint
 	lazy                   proto.LazyMessage
+	DataPoints             []*HistogramDataPoint
 	AggregationTemporality AggregationTemporality
 }
 

@@ -19,11 +19,11 @@ import (
 // LogRecord are experimental implementation of OpenTelemetry Log Data Model.
 
 type LogRecord struct {
+	Body                   AnyValue
+	lazy                   proto.LazyMessage
 	SeverityText           string
 	EventName              string
 	Attributes             []KeyValue
-	Body                   AnyValue
-	lazy                   proto.LazyMessage
 	TimeUnixNano           uint64
 	ObservedTimeUnixNano   uint64
 	SeverityNumber         SeverityNumber

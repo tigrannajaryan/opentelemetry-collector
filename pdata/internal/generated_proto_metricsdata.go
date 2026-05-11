@@ -19,8 +19,8 @@ import (
 // OR can be embedded by other protocols that transfer OTLP metrics data but do not
 // implement the OTLP protocol..
 type MetricsData struct {
-	ResourceMetrics []*ResourceMetrics
 	lazy            proto.LazyMessage
+	ResourceMetrics []*ResourceMetrics
 }
 
 var (

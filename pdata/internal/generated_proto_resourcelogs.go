@@ -18,10 +18,10 @@ import (
 // ResourceLogs is a collection of logs from a Resource.
 type ResourceLogs struct {
 	Resource            Resource
-	ScopeLogs           []*ScopeLogs
-	SchemaUrl           string
-	DeprecatedScopeLogs []*ScopeLogs
 	lazy                proto.LazyMessage
+	SchemaUrl           string
+	ScopeLogs           []*ScopeLogs
+	DeprecatedScopeLogs []*ScopeLogs
 }
 
 var (

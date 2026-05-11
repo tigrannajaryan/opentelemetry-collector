@@ -18,9 +18,9 @@ import (
 // ResourceProfiles is a collection of profiles from a Resource.
 type ResourceProfiles struct {
 	Resource      Resource
-	ScopeProfiles []*ScopeProfiles
-	SchemaUrl     string
 	lazy          proto.LazyMessage
+	SchemaUrl     string
+	ScopeProfiles []*ScopeProfiles
 }
 
 var (

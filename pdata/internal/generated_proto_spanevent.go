@@ -19,9 +19,9 @@ import (
 // SpanEvent is a time-stamped annotation of the span, consisting of user-supplied
 // text description and key-value pairs. See OTLP for event definition.
 type SpanEvent struct {
+	lazy                   proto.LazyMessage
 	Name                   string
 	Attributes             []KeyValue
-	lazy                   proto.LazyMessage
 	TimeUnixNano           uint64
 	DroppedAttributesCount uint32
 }

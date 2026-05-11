@@ -18,9 +18,9 @@ import (
 // ScopeSpans is a collection of spans from a LibraryInstrumentation.
 type ScopeSpans struct {
 	Scope     InstrumentationScope
-	Spans     []*Span
-	SchemaUrl string
 	lazy      proto.LazyMessage
+	SchemaUrl string
+	Spans     []*Span
 }
 
 var (

@@ -53,8 +53,8 @@ func (m *Exemplar) GetAsInt() int64 {
 // for example the span and trace ID of the active span when the exemplar was recorded.
 type Exemplar struct {
 	Value              any
-	FilteredAttributes []KeyValue
 	lazy               proto.LazyMessage
+	FilteredAttributes []KeyValue
 	TimeUnixNano       uint64
 	TraceId            TraceID
 	SpanId             SpanID
