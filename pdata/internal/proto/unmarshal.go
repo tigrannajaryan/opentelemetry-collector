@@ -111,6 +111,17 @@ func ConsumeI32(buf []byte, pos int) (uint32, int, error) {
 
 // ConsumeTag parses buf starting at pos as a varint-encoded tag, reporting the new position.
 func ConsumeTag(buf []byte, pos int) (int32, WireType, int, error) {
+	if pos >= len(buf) {
+		return 0, 0, 0, io.ErrUnexpectedEOF
+	}
+	if b := buf[pos]; b < 0x80 {
+		fieldNum := int32(b >> 3)
+		if fieldNum <= 0 {
+			return 0, 0, 0, fmt.Errorf("proto: Link: illegal field=%d (tag=%d, pos=%d)", fieldNum, b, pos+1)
+		}
+		return fieldNum, WireType(b & 0x7), pos + 1, nil
+	}
+
 	tag, pos, err := ConsumeVarint(buf, pos)
 	if err != nil {
 		return 0, 0, 0, err
